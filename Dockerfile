@@ -9,15 +9,15 @@ COPY go.sum go.sum
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
 
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    GO111MODULE=on
+
 # Copy the go source
 COPY main.go main.go
 COPY api/ api/
 COPY internal/ internal/
-
-ENV CGO_ENABLED=0
-ENV GOOS=linux
-ENV GOARCH=amd64
-ENV GO111MODULE=on
 
 # Do an initial compilation before setting the version so that there is less to
 # re-compile when the version changes

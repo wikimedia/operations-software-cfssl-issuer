@@ -41,6 +41,7 @@ const (
 
 var (
 	errGetAuthSecret        = errors.New("failed to get Secret containing Issuer credentials")
+	errAuthSecretKeyMissing = errors.New("Secret does not contain required field \"key\"")
 	errHealthCheckerBuilder = errors.New("failed to build the healthchecker")
 	errHealthCheckerCheck   = errors.New("healthcheck failed")
 )
@@ -122,6 +123,9 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	var secret corev1.Secret
 	if err := r.Get(ctx, secretName, &secret); err != nil {
 		return ctrl.Result{}, fmt.Errorf("%w, secret name: %s, reason: %v", errGetAuthSecret, secretName, err)
+	}
+	if _, ok := secret.Data["key"]; !ok {
+		return ctrl.Result{}, fmt.Errorf("%w, secret name: %s", errAuthSecretKeyMissing, secretName)
 	}
 
 	checker, err := r.HealthCheckerBuilder(issuerSpec, secret.Data)

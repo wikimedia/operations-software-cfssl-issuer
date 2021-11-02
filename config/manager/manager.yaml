@@ -25,17 +25,28 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - command:
-        - /manager
-        args:
-        - --enable-leader-election
-        image: controller:latest
-        name: manager
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+        - command:
+            - /manager
+          args:
+            - --enable-leader-election
+          image: controller:latest
+          name: manager
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+          env:
+            - name: SSL_CERT_FILE
+              value: /ca/ca.pem
+          volumeMounts:
+            - mountPath: /ca
+              name: ca
+              readOnly: true
       terminationGracePeriodSeconds: 10
+      volumes:
+        - name: ca
+          secret:
+            secretName: simplecfssl-ca

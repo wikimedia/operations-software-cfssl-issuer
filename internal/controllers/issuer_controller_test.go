@@ -20,6 +20,11 @@ import (
 	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
 	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
 	issuerutil "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/util"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/testutil"
+)
+
+const (
+	validSecretKey = "b8093a819f367241a8e0f55125589e25"
 )
 
 type fakeHealthChecker struct {
@@ -54,6 +59,8 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
+						Label:          "issuer1-label",
+						Profile:        "issuer1-profile",
 					},
 					Status: cfsslissuerapi.IssuerStatus{
 						Conditions: []cfsslissuerapi.IssuerCondition{
@@ -69,6 +76,7 @@ func TestIssuerReconcile(t *testing.T) {
 						Name:      "issuer1-credentials",
 						Namespace: "ns1",
 					},
+					Data: map[string][]byte{"key": []byte(validSecretKey)},
 				},
 			},
 			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
@@ -87,6 +95,8 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "clusterissuer1-credentials",
+						Label:          "clusterissuer1-label",
+						Profile:        "clusterissuer1-profile",
 					},
 					Status: cfsslissuerapi.IssuerStatus{
 						Conditions: []cfsslissuerapi.IssuerCondition{
@@ -102,6 +112,7 @@ func TestIssuerReconcile(t *testing.T) {
 						Name:      "clusterissuer1-credentials",
 						Namespace: "kube-system",
 					},
+					Data: map[string][]byte{"key": []byte(validSecretKey)},
 				},
 			},
 			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
@@ -140,6 +151,8 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
+						Label:          "issuer1-label",
+						Profile:        "issuer1-profile",
 					},
 					Status: cfsslissuerapi.IssuerStatus{
 						Conditions: []cfsslissuerapi.IssuerCondition{
@@ -154,7 +167,7 @@ func TestIssuerReconcile(t *testing.T) {
 			expectedError:                errGetAuthSecret,
 			expectedReadyConditionStatus: cfsslissuerapi.ConditionFalse,
 		},
-		"issuer-failing-healthchecker-builder": {
+		"issuer-missing-secret-key": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
 			objects: []client.Object{
 				&cfsslissuerapi.Issuer{
@@ -164,6 +177,8 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
+						Label:          "issuer1-label",
+						Profile:        "issuer1-profile",
 					},
 					Status: cfsslissuerapi.IssuerStatus{
 						Conditions: []cfsslissuerapi.IssuerCondition{
@@ -179,6 +194,39 @@ func TestIssuerReconcile(t *testing.T) {
 						Name:      "issuer1-credentials",
 						Namespace: "ns1",
 					},
+				},
+			},
+			expectedError:                errAuthSecretKeyMissing,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionFalse,
+		},
+		"issuer-failing-healthchecker-builder": {
+			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
+			objects: []client.Object{
+				&cfsslissuerapi.Issuer{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "issuer1",
+						Namespace: "ns1",
+					},
+					Spec: cfsslissuerapi.IssuerSpec{
+						AuthSecretName: "issuer1-credentials",
+						Label:          "issuer1-label",
+						Profile:        "issuer1-profile",
+					},
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
+							{
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionUnknown,
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "issuer1-credentials",
+						Namespace: "ns1",
+					},
+					Data: map[string][]byte{"key": []byte(validSecretKey)},
 				},
 			},
 			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
@@ -197,6 +245,8 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
+						Label:          "issuer1-label",
+						Profile:        "issuer1-profile",
 					},
 					Status: cfsslissuerapi.IssuerStatus{
 						Conditions: []cfsslissuerapi.IssuerCondition{
@@ -212,6 +262,7 @@ func TestIssuerReconcile(t *testing.T) {
 						Name:      "issuer1-credentials",
 						Namespace: "ns1",
 					},
+					Data: map[string][]byte{"key": []byte(validSecretKey)},
 				},
 			},
 			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
@@ -247,7 +298,7 @@ func TestIssuerReconcile(t *testing.T) {
 				reconcile.Request{NamespacedName: tc.name},
 			)
 			if tc.expectedError != nil {
-				assertErrorIs(t, tc.expectedError, err)
+				testutil.AssertErrorIs(t, tc.expectedError, err)
 			} else {
 				assert.NoError(t, err)
 			}
