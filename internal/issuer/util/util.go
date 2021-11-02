@@ -22,25 +22,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
 )
 
-func GetSpecAndStatus(issuer client.Object) (*sampleissuerapi.IssuerSpec, *sampleissuerapi.IssuerStatus, error) {
+func GetSpecAndStatus(issuer client.Object) (*cfsslissuerapi.IssuerSpec, *cfsslissuerapi.IssuerStatus, error) {
 	switch t := issuer.(type) {
-	case *sampleissuerapi.Issuer:
+	case *cfsslissuerapi.Issuer:
 		return &t.Spec, &t.Status, nil
-	case *sampleissuerapi.ClusterIssuer:
+	case *cfsslissuerapi.ClusterIssuer:
 		return &t.Spec, &t.Status, nil
 	default:
 		return nil, nil, fmt.Errorf("not an issuer type: %t", t)
 	}
 }
 
-func SetReadyCondition(status *sampleissuerapi.IssuerStatus, conditionStatus sampleissuerapi.ConditionStatus, reason, message string) {
+func SetReadyCondition(status *cfsslissuerapi.IssuerStatus, conditionStatus cfsslissuerapi.ConditionStatus, reason, message string) {
 	ready := GetReadyCondition(status)
 	if ready == nil {
-		ready = &sampleissuerapi.IssuerCondition{
-			Type: sampleissuerapi.IssuerConditionReady,
+		ready = &cfsslissuerapi.IssuerCondition{
+			Type: cfsslissuerapi.IssuerConditionReady,
 		}
 		status.Conditions = append(status.Conditions, *ready)
 	}
@@ -53,25 +53,25 @@ func SetReadyCondition(status *sampleissuerapi.IssuerStatus, conditionStatus sam
 	ready.Message = message
 
 	for i, c := range status.Conditions {
-		if c.Type == sampleissuerapi.IssuerConditionReady {
+		if c.Type == cfsslissuerapi.IssuerConditionReady {
 			status.Conditions[i] = *ready
 			return
 		}
 	}
 }
 
-func GetReadyCondition(status *sampleissuerapi.IssuerStatus) *sampleissuerapi.IssuerCondition {
+func GetReadyCondition(status *cfsslissuerapi.IssuerStatus) *cfsslissuerapi.IssuerCondition {
 	for _, c := range status.Conditions {
-		if c.Type == sampleissuerapi.IssuerConditionReady {
+		if c.Type == cfsslissuerapi.IssuerConditionReady {
 			return &c
 		}
 	}
 	return nil
 }
 
-func IsReady(status *sampleissuerapi.IssuerStatus) bool {
+func IsReady(status *cfsslissuerapi.IssuerStatus) bool {
 	if c := GetReadyCondition(status); c != nil {
-		return c.Status == sampleissuerapi.ConditionTrue
+		return c.Status == cfsslissuerapi.ConditionTrue
 	}
 	return false
 }

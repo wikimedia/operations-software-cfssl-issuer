@@ -26,15 +26,16 @@ import (
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	sampleissuerv1alpha1 "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
-	"github.com/cert-manager/sample-external-issuer/internal/controllers"
-	"github.com/cert-manager/sample-external-issuer/internal/issuer/signer"
-	"github.com/cert-manager/sample-external-issuer/internal/version"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/controllers"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/version"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -46,12 +47,12 @@ var (
 )
 
 func init() {
-	_ = clientgoscheme.AddToScheme(scheme)
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	_ = sampleissuerv1alpha1.AddToScheme(scheme)
+	utilruntime.Must(cfsslissuerapi.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
-	_ = cmapi.AddToScheme(scheme)
+	utilruntime.Must(cmapi.AddToScheme(scheme))
 }
 
 func main() {
@@ -109,7 +110,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "54c549fd.example.com",
+		LeaderElectionID:   "51059ce8.wikimedia.org",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

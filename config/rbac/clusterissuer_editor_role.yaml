@@ -5,7 +5,7 @@ metadata:
   name: clusterissuer-editor-role
 rules:
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - clusterissuers
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - clusterissuers/status
   verbs:

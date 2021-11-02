@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package v1alpha1 contains API Schema definitions for the sample-issuer v1alpha1 API group
 // +kubebuilder:object:generate=true
-// +groupName=sample-issuer.example.com
+// +groupName=cfssl-issuer.wikimedia.org
 package v1alpha1
 
 import (
@@ -26,7 +26,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "sample-issuer.example.com", Version: "v1alpha1"}
+	GroupVersion = schema.GroupVersion{Group: "cfssl-issuer.wikimedia.org", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

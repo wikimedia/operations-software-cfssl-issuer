@@ -5,7 +5,7 @@ This is an example of an [External Issuer] for cert-manager.
 ## Install
 
 ```
-kubectl apply -f https://github.com/cert-manager/sample-external-issuer/releases/download/v0.1.0/install.yaml
+kubectl apply -f https://gerrit.wikimedia.org/r/operations/software/cfssl-issuer/releases/download/v0.1.0/install.yaml
 ```
 
 ## Demo
@@ -31,7 +31,7 @@ Click the `Publish release` button to trigger the automated release process:
 * A Docker image will be generated and published to `gcr.io/cert-manager/sample-external-issuer/controller` with the chosen tag.
 * An `install.yaml` file will be generated and attached to the release.
 
-[GitHub New Release Page]: https://github.com/cert-manager/sample-external-issuer/releases/new
+[GitHub New Release Page]: https://gerrit.wikimedia.org/r/operations/software/cfssl-issuer/releases/new
 
 ## How to write your own external issuer
 
@@ -86,13 +86,13 @@ git init
 A Go project needs a `go.mod` file which defines the root name of your Go packages.
 
 ```
-go mod init github.com/cert-manager/sample-external-issuer
+go mod init gerrit.wikimedia.org/r/operations/software/cfssl-issuer
 ```
 
 ### Initialise a Kubebuilder project
 
 ```
-kubebuilder init  --domain example.com --owner 'The cert-manager Authors'
+kubebuilder init  --domain wikimedia.org --owner 'The cert-manager Authors'
 ```
 
 This will create multiple directories and files containing a Makefile and configuration for building and deploying your project.
@@ -380,7 +380,7 @@ And since we can't know the `Issuer` configuration or credentials until we begin
 we need to describe a constructor function type which can build a `HealthChecker` from an `IssuerSpec`  and some `Secret` data.
 
 ```
- type HealthCheckerBuilder func(*sampleissuerapi.IssuerSpec, map[string][]byte) (HealthChecker, error)
+ type HealthCheckerBuilder func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (HealthChecker, error)
 ```
 
 This will be supplied as an `IssuerReconciler` field, and can be easily faked in the unit-tests.
@@ -403,7 +403,7 @@ type Signer interface {
     Sign([]byte) ([]byte, error)
 }
 
-type SignerBuilder func(*sampleissuerapi.IssuerSpec, map[string][]byte) (Signer, error)
+type SignerBuilder func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (Signer, error)
 ```
 
 We don't need to implement it yet,
@@ -458,7 +458,7 @@ We can write a simple end-to-end test which deploys a `Certificate` manifest and
 
 ```
 kubectl apply --filename config/samples
-kubectl wait --for=condition=Ready --timeout=5s issuers.sample-issuer.example.com issuer-sample
+kubectl wait --for=condition=Ready --timeout=5s issuers.cfssl-issuer.wikimedia.org issuer-sample
 kubectl wait --for=condition=Ready --timeout=5s  certificates.cert-manager.io certificate-by-issuer
 ```
 

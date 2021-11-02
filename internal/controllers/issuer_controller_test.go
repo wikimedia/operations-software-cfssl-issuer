@@ -17,9 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
-	"github.com/cert-manager/sample-external-issuer/internal/issuer/signer"
-	issuerutil "github.com/cert-manager/sample-external-issuer/internal/issuer/util"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
+	issuerutil "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/util"
 )
 
 type fakeHealthChecker struct {
@@ -39,7 +39,7 @@ func TestIssuerReconcile(t *testing.T) {
 		clusterResourceNamespace     string
 		expectedResult               ctrl.Result
 		expectedError                error
-		expectedReadyConditionStatus sampleissuerapi.ConditionStatus
+		expectedReadyConditionStatus cfsslissuerapi.ConditionStatus
 	}
 
 	tests := map[string]testCase{
@@ -47,19 +47,19 @@ func TestIssuerReconcile(t *testing.T) {
 			kind: "Issuer",
 			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
 			objects: []client.Object{
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionUnknown,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionUnknown,
 							},
 						},
 					},
@@ -71,28 +71,28 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 				},
 			},
-			healthCheckerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
+			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
 				return &fakeHealthChecker{}, nil
 			},
-			expectedReadyConditionStatus: sampleissuerapi.ConditionTrue,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionTrue,
 			expectedResult:               ctrl.Result{RequeueAfter: defaultHealthCheckInterval},
 		},
 		"success-clusterissuer": {
 			kind: "ClusterIssuer",
 			name: types.NamespacedName{Name: "clusterissuer1"},
 			objects: []client.Object{
-				&sampleissuerapi.ClusterIssuer{
+				&cfsslissuerapi.ClusterIssuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "clusterissuer1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "clusterissuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionUnknown,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionUnknown,
 							},
 						},
 					},
@@ -104,11 +104,11 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 				},
 			},
-			healthCheckerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
+			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
 				return &fakeHealthChecker{}, nil
 			},
 			clusterResourceNamespace:     "kube-system",
-			expectedReadyConditionStatus: sampleissuerapi.ConditionTrue,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionTrue,
 			expectedResult:               ctrl.Result{RequeueAfter: defaultHealthCheckInterval},
 		},
 		"issuer-kind-unrecognised": {
@@ -121,55 +121,55 @@ func TestIssuerReconcile(t *testing.T) {
 		"issuer-missing-ready-condition": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
 			objects: []client.Object{
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
 				},
 			},
-			expectedReadyConditionStatus: sampleissuerapi.ConditionUnknown,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionUnknown,
 		},
 		"issuer-missing-secret": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
 			objects: []client.Object{
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionUnknown,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionUnknown,
 							},
 						},
 					},
 				},
 			},
 			expectedError:                errGetAuthSecret,
-			expectedReadyConditionStatus: sampleissuerapi.ConditionFalse,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionFalse,
 		},
 		"issuer-failing-healthchecker-builder": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
 			objects: []client.Object{
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionUnknown,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionUnknown,
 							},
 						},
 					},
@@ -181,28 +181,28 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 				},
 			},
-			healthCheckerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
+			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
 				return nil, errors.New("simulated health checker builder error")
 			},
 			expectedError:                errHealthCheckerBuilder,
-			expectedReadyConditionStatus: sampleissuerapi.ConditionFalse,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionFalse,
 		},
 		"issuer-failing-healthchecker-check": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "issuer1"},
 			objects: []client.Object{
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionUnknown,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionUnknown,
 							},
 						},
 					},
@@ -214,16 +214,16 @@ func TestIssuerReconcile(t *testing.T) {
 					},
 				},
 			},
-			healthCheckerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
+			healthCheckerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.HealthChecker, error) {
 				return &fakeHealthChecker{errCheck: errors.New("simulated health check error")}, nil
 			},
 			expectedError:                errHealthCheckerCheck,
-			expectedReadyConditionStatus: sampleissuerapi.ConditionFalse,
+			expectedReadyConditionStatus: cfsslissuerapi.ConditionFalse,
 		},
 	}
 
 	scheme := runtime.NewScheme()
-	require.NoError(t, sampleissuerapi.AddToScheme(scheme))
+	require.NoError(t, cfsslissuerapi.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 
 	for name, tc := range tests {
@@ -266,7 +266,7 @@ func TestIssuerReconcile(t *testing.T) {
 	}
 }
 
-func assertIssuerHasReadyCondition(t *testing.T, status sampleissuerapi.ConditionStatus, issuerStatus *sampleissuerapi.IssuerStatus) {
+func assertIssuerHasReadyCondition(t *testing.T, status cfsslissuerapi.ConditionStatus, issuerStatus *cfsslissuerapi.IssuerStatus) {
 	condition := issuerutil.GetReadyCondition(issuerStatus)
 	if !assert.NotNil(t, condition, "Ready condition not found") {
 		return

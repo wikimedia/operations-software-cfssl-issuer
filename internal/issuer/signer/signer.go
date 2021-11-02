@@ -6,26 +6,26 @@ import (
 
 	capi "k8s.io/api/certificates/v1beta1"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
 )
 
 type HealthChecker interface {
 	Check() error
 }
 
-type HealthCheckerBuilder func(*sampleissuerapi.IssuerSpec, map[string][]byte) (HealthChecker, error)
+type HealthCheckerBuilder func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (HealthChecker, error)
 
 type Signer interface {
 	Sign([]byte) ([]byte, error)
 }
 
-type SignerBuilder func(*sampleissuerapi.IssuerSpec, map[string][]byte) (Signer, error)
+type SignerBuilder func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (Signer, error)
 
-func ExampleHealthCheckerFromIssuerAndSecretData(*sampleissuerapi.IssuerSpec, map[string][]byte) (HealthChecker, error) {
+func ExampleHealthCheckerFromIssuerAndSecretData(*cfsslissuerapi.IssuerSpec, map[string][]byte) (HealthChecker, error) {
 	return &exampleSigner{}, nil
 }
 
-func ExampleSignerFromIssuerAndSecretData(*sampleissuerapi.IssuerSpec, map[string][]byte) (Signer, error) {
+func ExampleSignerFromIssuerAndSecretData(*cfsslissuerapi.IssuerSpec, map[string][]byte) (Signer, error) {
 	return &exampleSigner{}, nil
 }
 

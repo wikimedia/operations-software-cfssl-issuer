@@ -33,9 +33,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
-	"github.com/cert-manager/sample-external-issuer/internal/issuer/signer"
-	issuerutil "github.com/cert-manager/sample-external-issuer/internal/issuer/util"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
+	issuerutil "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/util"
 )
 
 var (
@@ -75,7 +75,7 @@ func (r *CertificateRequestReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// Ignore CertificateRequest if issuerRef doesn't match our group
-	if certificateRequest.Spec.IssuerRef.Group != sampleissuerapi.GroupVersion.Group {
+	if certificateRequest.Spec.IssuerRef.Group != cfsslissuerapi.GroupVersion.Group {
 		log.Info("Foreign group. Ignoring.", "group", certificateRequest.Spec.IssuerRef.Group)
 		return ctrl.Result{}, nil
 	}
@@ -161,7 +161,7 @@ func (r *CertificateRequestReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// Ignore but log an error if the issuerRef.Kind is unrecognised
-	issuerGVK := sampleissuerapi.GroupVersion.WithKind(certificateRequest.Spec.IssuerRef.Kind)
+	issuerGVK := cfsslissuerapi.GroupVersion.WithKind(certificateRequest.Spec.IssuerRef.Kind)
 	issuerRO, err := r.Scheme.New(issuerGVK)
 	if err != nil {
 		err = fmt.Errorf("%w: %v", errIssuerRef, err)
@@ -176,11 +176,11 @@ func (r *CertificateRequestReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	var secretNamespace string
 	switch t := issuer.(type) {
-	case *sampleissuerapi.Issuer:
+	case *cfsslissuerapi.Issuer:
 		issuerName.Namespace = certificateRequest.Namespace
 		secretNamespace = certificateRequest.Namespace
 		log = log.WithValues("issuer", issuerName)
-	case *sampleissuerapi.ClusterIssuer:
+	case *cfsslissuerapi.ClusterIssuer:
 		secretNamespace = r.ClusterResourceNamespace
 		log = log.WithValues("clusterissuer", issuerName)
 	default:
