@@ -139,7 +139,7 @@ make e2e-all
 
 If you already have a running Kubernetes cluster and want to test using the currently active context:
 ```
-make docker-build deploy-simplecfssl e2e
+make docker-build deploy-simple-cfssl e2e
 ```
 
 ## Links

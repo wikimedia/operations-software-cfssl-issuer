@@ -49,4 +49,4 @@ spec:
       volumes:
         - name: ca
           secret:
-            secretName: simplecfssl-ca
+            secretName: simple-cfssl-ca

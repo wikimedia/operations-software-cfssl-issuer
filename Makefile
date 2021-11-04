@@ -55,6 +55,7 @@ manager: generate fmt vet
 		-o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
+run: export SSL_CERT_FILE = simple-cfssl-ca.pem
 run: generate fmt vet manifests
 	go run ./main.go --cluster-resource-namespace=cfssl-issuer-system
 
@@ -122,6 +123,14 @@ ${CONTROLLER_GEN}: | ${BIN}
 
 
 # ==================================
+# simple-cfssl
+# ==================================
+docker-build-simple-cfssl:
+	cd simple-cfssl
+	docker build --tag simple-cfssl .
+
+
+# ==================================
 # E2E testing
 # ==================================
 .PHONY: kind-cluster
@@ -131,6 +140,7 @@ kind-cluster: ${KIND} ## Use Kind to create a Kubernetes cluster for E2E tests
 .PHONY: kind-load
 kind-load: ## Load the Docker image into Kind
 	${KIND} load docker-image --name ${K8S_CLUSTER_NAME} ${IMG}
+	${KIND} load docker-image --name ${K8S_CLUSTER_NAME} simple-cfssl:latest
 
 .PHONY: kind-export-logs
 kind-export-logs:
@@ -142,13 +152,13 @@ deploy-cert-manager: ## Deploy cert-manager in the configured Kubernetes cluster
 	kubectl apply --filename=https://github.com/jetstack/cert-manager/releases/download/v${CERT_MANAGER_VERSION}/cert-manager.yaml
 	kubectl wait --for=condition=Available --timeout=300s apiservice v1.cert-manager.io
 
-.PHONY: deploy-simplecfssl
-deploy-simplecfssl:
+.PHONY: deploy-simple-cfssl
+deploy-simple-cfssl:
 	kubectl apply -f simple-cfssl/simple-cfssl.yaml
 	kubectl -n simple-cfssl wait --for=condition=Available --timeout=10s deployment simple-cfssl
-	kubectl -n simple-cfssl exec -it deployment/simple-cfssl -- cat /cfssl/ca/ca.pem > simplecfssl-ca.pem
-	kubectl -n cfssl-issuer-system delete secret simplecfssl-ca || true
-	kubectl -n cfssl-issuer-system create secret generic simplecfssl-ca --from-file=ca.pem=simplecfssl-ca.pem
+	kubectl -n simple-cfssl exec -it deployment/simple-cfssl -- cat /cfssl/ca/ca.pem > simple-cfssl-ca.pem
+	kubectl -n cfssl-issuer-system delete secret simple-cfssl-ca || true
+	kubectl -n cfssl-issuer-system create secret generic simple-cfssl-ca --from-file=ca.pem=simple-cfssl-ca.pem
 
 .PHONY: e2e
 e2e: deploy-cert-manager deploy ## Run e2e on whatever cluster is active in .kube/config
@@ -165,7 +175,7 @@ e2e: deploy-cert-manager deploy ## Run e2e on whatever cluster is active in .kub
 	kubectl delete --filename config/samples
 
 .PHONY: e2e-all
-e2e-all: docker-build kind-cluster kind-load deploy-simplecfssl e2e ## Create local kind cluster and run e2e there
+e2e-all: docker-build docker-build-simple-cfssl kind-cluster kind-load deploy-simple-cfssl e2e ## Create local kind cluster and run e2e there
 
 # ==================================
 # Download: tools in ${BIN}

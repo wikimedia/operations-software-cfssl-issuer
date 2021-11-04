@@ -1,0 +1,39 @@
+{
+    "auth_keys": {
+        "auth_key": {
+            "key": "b8093a819f367241a8e0f55125589e25",
+            "type": "standard"
+        }
+    },
+    "signing": {
+        "default": {
+            "auth_key": "auth_key",
+            "expiry": "8760h",
+            "usages": [
+                "signing",
+                "key encipherment",
+                "server auth"
+            ]
+        },
+        "profiles": {
+            "server": {
+                "auth_key": "auth_key",
+                "expiry": "8760h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth"
+                ]
+            },
+            "server-short": {
+                "auth_key": "auth_key",
+                "expiry": "600s",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth"
+                ]
+            }
+        }
+    }
+}
