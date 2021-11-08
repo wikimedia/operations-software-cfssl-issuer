@@ -25,8 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
-	"github.com/cert-manager/sample-external-issuer/internal/issuer/signer"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
 )
 
 var (
@@ -66,7 +66,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -78,19 +78,19 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -102,7 +102,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					},
 				},
 			},
-			signerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
+			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
 			},
 			expectedReadyConditionStatus: cmmeta.ConditionTrue,
@@ -118,7 +118,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "clusterissuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "ClusterIssuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -130,18 +130,18 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.ClusterIssuer{
+				&cfsslissuerapi.ClusterIssuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "clusterissuer1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "clusterissuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -153,7 +153,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					},
 				},
 			},
-			signerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
+			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
 			},
 			clusterResourceNamespace:     "kube-system",
@@ -186,7 +186,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -208,7 +208,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -228,7 +228,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "ForeignKind",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -252,7 +252,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -277,7 +277,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "clusterissuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "ClusterIssuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -302,7 +302,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -314,16 +314,16 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionFalse,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionFalse,
 							},
 						},
 					},
@@ -341,7 +341,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -353,19 +353,19 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -383,7 +383,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -395,19 +395,19 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -419,7 +419,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					},
 				},
 			},
-			signerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
+			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return nil, errors.New("simulated signer builder error")
 			},
 			expectedError:                errSignerBuilder,
@@ -434,7 +434,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -446,19 +446,19 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -470,7 +470,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					},
 				},
 			},
-			signerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
+			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{errSign: errors.New("simulated sign error")}, nil
 			},
 			expectedError:                errSignerSign,
@@ -485,7 +485,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -493,19 +493,19 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -517,7 +517,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					},
 				},
 			},
-			signerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
+			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
 			},
 			expectedFailureTime: nil,
@@ -531,7 +531,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					cmgen.SetCertificateRequestNamespace("ns1"),
 					cmgen.SetCertificateRequestIssuer(cmmeta.ObjectReference{
 						Name:  "issuer1",
-						Group: sampleissuerapi.GroupVersion.Group,
+						Group: cfsslissuerapi.GroupVersion.Group,
 						Kind:  "Issuer",
 					}),
 					cmgen.SetCertificateRequestStatusCondition(cmapi.CertificateRequestCondition{
@@ -543,19 +543,19 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&sampleissuerapi.Issuer{
+				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
 						Namespace: "ns1",
 					},
-					Spec: sampleissuerapi.IssuerSpec{
+					Spec: cfsslissuerapi.IssuerSpec{
 						AuthSecretName: "issuer1-credentials",
 					},
-					Status: sampleissuerapi.IssuerStatus{
-						Conditions: []sampleissuerapi.IssuerCondition{
+					Status: cfsslissuerapi.IssuerStatus{
+						Conditions: []cfsslissuerapi.IssuerCondition{
 							{
-								Type:   sampleissuerapi.IssuerConditionReady,
-								Status: sampleissuerapi.ConditionTrue,
+								Type:   cfsslissuerapi.IssuerConditionReady,
+								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
 					},
@@ -567,7 +567,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 					},
 				},
 			},
-			signerBuilder: func(*sampleissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
+			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
 			},
 			expectedCertificate:          nil,
@@ -578,7 +578,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	require.NoError(t, sampleissuerapi.AddToScheme(scheme))
+	require.NoError(t, cfsslissuerapi.AddToScheme(scheme))
 	require.NoError(t, cmapi.AddToScheme(scheme))
 	require.NoError(t, corev1.AddToScheme(scheme))
 

@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
-  name: clusterissuers.sample-issuer.example.com
+  name: issuers.cfssl-issuer.wikimedia.org
 spec:
-  group: sample-issuer.example.com
+  group: cfssl-issuer.wikimedia.org
   names:
-    kind: ClusterIssuer
-    listKind: ClusterIssuerList
-    plural: clusterissuers
-    singular: clusterissuer
-  scope: Cluster
+    kind: Issuer
+    listKind: IssuerList
+    plural: issuers
+    singular: issuer
+  scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ClusterIssuer is the Schema for the clusterissuers API
+        description: Issuer is the Schema for the issuers API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'

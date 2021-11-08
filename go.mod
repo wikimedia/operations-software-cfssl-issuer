@@ -1,4 +1,4 @@
-module github.com/cert-manager/sample-external-issuer
+module gerrit.wikimedia.org/r/operations/software/cfssl-issuer
 
 go 1.15
 

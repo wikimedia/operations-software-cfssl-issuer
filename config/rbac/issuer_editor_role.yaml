@@ -5,7 +5,7 @@ metadata:
   name: issuer-editor-role
 rules:
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - issuers
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - issuers/status
   verbs:

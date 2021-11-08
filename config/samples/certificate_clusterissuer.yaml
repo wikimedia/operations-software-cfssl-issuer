@@ -7,5 +7,5 @@ spec:
   secretName: certificate-by-clusterissuer
   issuerRef:
     name: clusterissuer-sample
-    group: sample-issuer.example.com
+    group: cfssl-issuer.wikimedia.org
     kind: ClusterIssuer

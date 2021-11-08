@@ -9,8 +9,8 @@ SHELL := bash
 # and which will be used as the Docker image tag
 VERSION ?= $(shell git describe --tags)
 # The Docker repository name, overridden in CI.
-DOCKER_REGISTRY ?= ghcr.io
-DOCKER_IMAGE_NAME ?= cert-manager/sample-external-issuer/controller
+DOCKER_REGISTRY ?= docker-registry.wikimedia.org
+DOCKER_IMAGE_NAME ?= cfssl-issuer
 # Image URL to use all building/pushing image targets
 IMG ?= ${DOCKER_REGISTRY}/${DOCKER_IMAGE_NAME}:${VERSION}
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
@@ -25,7 +25,7 @@ ARCH := $(shell go env GOARCH)
 # Kind
 KIND_VERSION := 0.9.0
 KIND := ${BIN}/kind-${KIND_VERSION}
-K8S_CLUSTER_NAME := sample-external-issuer-e2e
+K8S_CLUSTER_NAME := cfssl-issuer-e2e
 
 # cert-manager
 CERT_MANAGER_VERSION ?= 1.3.0
@@ -36,7 +36,7 @@ CONTROLLER_GEN := ${BIN}/controller-gen-${CONTROLLER_GEN_VERSION}
 
 INSTALL_YAML ?= build/install.yaml
 
-all: manager
+all: manifests manager
 
 # Run tests
 test: generate fmt vet manifests
@@ -117,12 +117,11 @@ ${CONTROLLER_GEN}: | ${BIN}
 # E2E testing
 # ==================================
 .PHONY: kind-cluster
-kind-cluster: ## Use Kind to create a Kubernetes cluster for E2E tests
-kind-cluster: ${KIND}
+kind-cluster: ${KIND} ## Use Kind to create a Kubernetes cluster for E2E tests
 	 ${KIND} get clusters | grep ${K8S_CLUSTER_NAME} || ${KIND} create cluster --name ${K8S_CLUSTER_NAME}
 
 .PHONY: kind-load
-kind-load: ## Load all the Docker images into Kind
+kind-load: ## Load the Docker image into Kind
 	${KIND} load docker-image --name ${K8S_CLUSTER_NAME} ${IMG}
 
 .PHONY: kind-export-logs
@@ -135,16 +134,16 @@ deploy-cert-manager: ## Deploy cert-manager in the configured Kubernetes cluster
 	kubectl apply --filename=https://github.com/jetstack/cert-manager/releases/download/v${CERT_MANAGER_VERSION}/cert-manager.yaml
 	kubectl wait --for=condition=Available --timeout=300s apiservice v1.cert-manager.io
 
-e2e:
+e2e: docker-build kind-cluster deploy-cert-manager kind-load deploy
 	kubectl apply --filename config/samples
 
-	kubectl wait --for=condition=Ready --timeout=5s issuers.sample-issuer.example.com issuer-sample
-	kubectl wait --for=condition=Ready --timeout=5s  certificaterequests.cert-manager.io issuer-sample
-	kubectl wait --for=condition=Ready --timeout=5s  certificates.cert-manager.io certificate-by-issuer
+	kubectl wait --for=condition=Ready --timeout=10s issuers.cfssl-issuer.wikimedia.org issuer-sample
+	kubectl wait --for=condition=Ready --timeout=10s certificaterequests.cert-manager.io issuer-sample
+	kubectl wait --for=condition=Ready --timeout=10s certificates.cert-manager.io certificate-by-issuer
 
-	kubectl wait --for=condition=Ready --timeout=5s clusterissuers.sample-issuer.example.com clusterissuer-sample
-	kubectl wait --for=condition=Ready --timeout=5s  certificaterequests.cert-manager.io clusterissuer-sample
-	kubectl wait --for=condition=Ready --timeout=5s  certificates.cert-manager.io certificate-by-clusterissuer
+	kubectl wait --for=condition=Ready --timeout=10s clusterissuers.cfssl-issuer.wikimedia.org clusterissuer-sample
+	kubectl wait --for=condition=Ready --timeout=10s certificaterequests.cert-manager.io clusterissuer-sample
+	kubectl wait --for=condition=Ready --timeout=10s certificates.cert-manager.io certificate-by-clusterissuer
 
 	kubectl delete --filename config/samples
 

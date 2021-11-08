@@ -31,7 +31,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - clusterissuers
   - issuers
@@ -40,7 +40,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - clusterissuers/status
   - issuers/status

@@ -29,9 +29,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
-	"github.com/cert-manager/sample-external-issuer/internal/issuer/signer"
-	issuerutil "github.com/cert-manager/sample-external-issuer/internal/issuer/util"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
+	issuerutil "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/util"
 )
 
 const (
@@ -54,12 +54,12 @@ type IssuerReconciler struct {
 	HealthCheckerBuilder     signer.HealthCheckerBuilder
 }
 
-// +kubebuilder:rbac:groups=sample-issuer.example.com,resources=issuers;clusterissuers,verbs=get;list;watch
-// +kubebuilder:rbac:groups=sample-issuer.example.com,resources=issuers/status;clusterissuers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cfssl-issuer.wikimedia.org,resources=issuers;clusterissuers,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cfssl-issuer.wikimedia.org,resources=issuers/status;clusterissuers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 func (r *IssuerReconciler) newIssuer() (client.Object, error) {
-	issuerGVK := sampleissuerapi.GroupVersion.WithKind(r.Kind)
+	issuerGVK := cfsslissuerapi.GroupVersion.WithKind(r.Kind)
 	ro, err := r.Scheme.New(issuerGVK)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	// Always attempt to update the Ready condition
 	defer func() {
 		if err != nil {
-			issuerutil.SetReadyCondition(issuerStatus, sampleissuerapi.ConditionFalse, issuerReadyConditionReason, err.Error())
+			issuerutil.SetReadyCondition(issuerStatus, cfsslissuerapi.ConditionFalse, issuerReadyConditionReason, err.Error())
 		}
 		if updateErr := r.Status().Update(ctx, issuer); updateErr != nil {
 			err = utilerrors.NewAggregate([]error{err, updateErr})
@@ -101,7 +101,7 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}()
 
 	if ready := issuerutil.GetReadyCondition(issuerStatus); ready == nil {
-		issuerutil.SetReadyCondition(issuerStatus, sampleissuerapi.ConditionUnknown, issuerReadyConditionReason, "First seen")
+		issuerutil.SetReadyCondition(issuerStatus, cfsslissuerapi.ConditionUnknown, issuerReadyConditionReason, "First seen")
 		return ctrl.Result{}, nil
 	}
 
@@ -110,9 +110,9 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	switch issuer.(type) {
-	case *sampleissuerapi.Issuer:
+	case *cfsslissuerapi.Issuer:
 		secretName.Namespace = req.Namespace
-	case *sampleissuerapi.ClusterIssuer:
+	case *cfsslissuerapi.ClusterIssuer:
 		secretName.Namespace = r.ClusterResourceNamespace
 	default:
 		log.Error(fmt.Errorf("unexpected issuer type: %t", issuer), "Not retrying.")
@@ -133,7 +133,7 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return ctrl.Result{}, fmt.Errorf("%w: %v", errHealthCheckerCheck, err)
 	}
 
-	issuerutil.SetReadyCondition(issuerStatus, sampleissuerapi.ConditionTrue, issuerReadyConditionReason, "Success")
+	issuerutil.SetReadyCondition(issuerStatus, cfsslissuerapi.ConditionTrue, issuerReadyConditionReason, "Success")
 	return ctrl.Result{RequeueAfter: defaultHealthCheckInterval}, nil
 }
 

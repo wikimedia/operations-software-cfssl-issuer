@@ -21,15 +21,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	sampleissuerapi "github.com/cert-manager/sample-external-issuer/api/v1alpha1"
+	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
 )
 
 func TestSetReadyCondition(t *testing.T) {
-	var issuerStatus sampleissuerapi.IssuerStatus
+	var issuerStatus cfsslissuerapi.IssuerStatus
 
-	SetReadyCondition(&issuerStatus, sampleissuerapi.ConditionTrue, "reason1", "message1")
+	SetReadyCondition(&issuerStatus, cfsslissuerapi.ConditionTrue, "reason1", "message1")
 	assert.Equal(t, "message1", GetReadyCondition(&issuerStatus).Message)
 
-	SetReadyCondition(&issuerStatus, sampleissuerapi.ConditionFalse, "reason2", "message2")
+	SetReadyCondition(&issuerStatus, cfsslissuerapi.ConditionFalse, "reason2", "message2")
 	assert.Equal(t, "message2", GetReadyCondition(&issuerStatus).Message)
 }

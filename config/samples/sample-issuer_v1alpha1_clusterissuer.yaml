@@ -1,7 +1,7 @@
-apiVersion: sample-issuer.example.com/v1alpha1
+apiVersion: cfssl-issuer.wikimedia.org/v1alpha1
 kind: ClusterIssuer
 metadata:
   name: clusterissuer-sample
 spec:
   authSecretName: "clusterissuer-sample-credentials"
-  url: "http://sample-issuer.example.com/api/v1"
+  url: "http://sample-signer.example.com/api/v1"

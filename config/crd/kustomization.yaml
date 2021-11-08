@@ -2,8 +2,8 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/sample-issuer.example.com_issuers.yaml
-- bases/sample-issuer.example.com_clusterissuers.yaml
+- bases/cfssl-issuer.wikimedia.org_issuers.yaml
+- bases/cfssl-issuer.wikimedia.org_clusterissuers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

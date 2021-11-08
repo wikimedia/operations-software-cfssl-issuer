@@ -5,7 +5,7 @@ metadata:
   name: issuer-viewer-role
 rules:
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - issuers
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - sample-issuer.example.com
+  - cfssl-issuer.wikimedia.org
   resources:
   - issuers/status
   verbs:

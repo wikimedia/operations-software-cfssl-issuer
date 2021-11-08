@@ -1,5 +1,5 @@
-domain: example.com
-repo: github.com/cert-manager/sample-external-issuer
+domain: wikimedia.org
+repo: gerrit.wikimedia.org/r/operations/software/cfssl-issuer
 resources:
 - group: sample-issuer
   kind: Issuer
