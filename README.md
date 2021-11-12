@@ -150,4 +150,4 @@ make docker-build deploy-simple-cfssl e2e
 [Kubebuilder Book]: https://book.kubebuilder.io
 [kube-rbac-proxy]: https://github.com/brancz/kube-rbac-proxy
 [Kind]: (https://kind.sigs.k8s.io/)
-[sample-external-isser]: https://github.com/cert-manager/sample-external-issuer
+[sample-external-issuer]: https://github.com/cert-manager/sample-external-issuer
