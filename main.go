@@ -1,5 +1,6 @@
 /*
 Copyright 2020 The cert-manager Authors
+Copyright 2021 The Wikimedia Foundation, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -122,7 +123,7 @@ func main() {
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		ClusterResourceNamespace: clusterResourceNamespace,
-		HealthCheckerBuilder:     signer.ExampleHealthCheckerFromIssuerAndSecretData,
+		HealthCheckerBuilder:     signer.NewCfsslHealthChecker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Issuer")
 		os.Exit(1)
@@ -132,7 +133,7 @@ func main() {
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		ClusterResourceNamespace: clusterResourceNamespace,
-		HealthCheckerBuilder:     signer.ExampleHealthCheckerFromIssuerAndSecretData,
+		HealthCheckerBuilder:     signer.NewCfsslHealthChecker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterIssuer")
 		os.Exit(1)
@@ -142,7 +143,7 @@ func main() {
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		ClusterResourceNamespace: clusterResourceNamespace,
-		SignerBuilder:            signer.ExampleSignerFromIssuerAndSecretData,
+		SignerBuilder:            signer.NewCfsslSigner,
 		CheckApprovedCondition:   !disableApprovedCheck,
 		Clock:                    clock.RealClock{},
 	}).SetupWithManager(mgr); err != nil {

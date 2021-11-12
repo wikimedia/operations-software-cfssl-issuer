@@ -1,5 +1,6 @@
 /*
 Copyright 2020 The cert-manager Authors
+Copyright 2021 The Wikimedia Foundation, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +23,11 @@ import (
 
 // IssuerSpec defines the desired state of Issuer
 type IssuerSpec struct {
-	// URL is the base URL for the endpoint of the signing service,
-	// for example: "https://sample-signer.example.com/api".
+	// URL is one or more base URLs for the CFSSL API, for example:
+	// "https://sample-signer.example.com/api,https//cfssl.example.com".
+	// If multiple comma seperated URLs are given and the first server cannot be reached,
+	// the next is used. The client will proceed in this manner until the list of
+	// servers is exhausted, and then an error is returned.
 	URL string `json:"url"`
 
 	// A reference to a Secret in the same namespace as the referent. If the
@@ -31,7 +35,19 @@ type IssuerSpec struct {
 	// with the given name in the configured 'cluster resource namespace', which
 	// is set as a flag on the controller component (and defaults to the
 	// namespace that the controller runs in).
+	// The secret needs to contain a field "key" containing the hex string used to
+	// authenticate against cfssl API as well as an optional "additional_data" field.
 	AuthSecretName string `json:"authSecretName"`
+
+	// A string specifying which CFSSL signer to be appointed to sign the CSR.
+	// Label is mandatory as the info endpoint of the CFSSL API (which is used for
+	// health checking the API) requires it to be set.
+	Label string `json:"label"`
+
+	// A string specifying the signing profile for the CFSSL signer (a signer may have
+	// multiple different profiles configured).
+	// If omitted, the "default" profile is used.
+	Profile string `json:"profile,omitempty"`
 }
 
 // IssuerStatus defines the observed state of Issuer

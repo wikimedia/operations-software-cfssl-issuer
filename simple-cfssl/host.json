@@ -1,0 +1,18 @@
+{
+  "CN": "api.simple-cfssl.svc.cluster.local",
+  "key": {
+    "algo": "ecdsa",
+    "size": 256
+  },
+  "names": [
+    {
+      "O": "Simple",
+      "OU": "Simple CFSSL API"
+    }
+  ],
+  "hosts": [
+    "localhost",
+    "127.0.0.1",
+    "api.simple-cfssl.svc.cluster.local"
+  ]
+}

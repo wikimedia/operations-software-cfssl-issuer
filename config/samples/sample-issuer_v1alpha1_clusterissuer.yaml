@@ -4,4 +4,5 @@ metadata:
   name: clusterissuer-sample
 spec:
   authSecretName: "clusterissuer-sample-credentials"
-  url: "http://sample-signer.example.com/api/v1"
+  url: "https://api.simple-cfssl.svc.cluster.local:30888,https://dead.end.local"
+  label: "intermediate1"

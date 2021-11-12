@@ -1,0 +1,49 @@
+{
+    "auth_keys": {
+        "auth_key": {
+            "key": "b8093a819f367241a8e0f55125589e25",
+            "type": "standard"
+        }
+    },
+    "signing": {
+        "default": {
+            "auth_key": "auth_key",
+            "expiry": "8760h",
+            "usages": [
+                "signing",
+                "key encipherment",
+                "server auth"
+            ]
+        },
+        "profiles": {
+            "intermediate_ca": {
+                "usages": [
+                    "cert sign",
+                    "crl sign"
+                ],
+                "expiry": "8760h",
+                "ca_constraint": {
+                    "is_ca": true,
+                    "max_path_len": 0,
+                    "max_path_len_zero": true
+                }
+            },
+            "server": {
+                "expiry": "8760h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth"
+                ]
+            },
+            "server-short": {
+                "expiry": "600s",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth"
+                ]
+            }
+        }
+    }
+}

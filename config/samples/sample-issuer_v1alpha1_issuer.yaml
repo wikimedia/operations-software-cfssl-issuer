@@ -4,4 +4,6 @@ metadata:
   name: issuer-sample
 spec:
   authSecretName: "issuer-sample-credentials"
-  url: "http://sample-signer.example.com/api/v1"
+  url: "https://dead.end.local,https://api.simple-cfssl.svc.cluster.local:30888"
+  label: "intermediate2"
+  profile: "server-short"

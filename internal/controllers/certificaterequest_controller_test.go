@@ -27,6 +27,7 @@ import (
 
 	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
 	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
+	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/testutil"
 )
 
 var (
@@ -601,7 +602,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 				reconcile.Request{NamespacedName: tc.name},
 			)
 			if tc.expectedError != nil {
-				assertErrorIs(t, tc.expectedError, err)
+				testutil.AssertErrorIs(t, tc.expectedError, err)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -623,13 +624,6 @@ func TestCertificateRequestReconcile(t *testing.T) {
 			}
 		})
 	}
-}
-
-func assertErrorIs(t *testing.T, expectedError, actualError error) {
-	if !assert.Error(t, actualError) {
-		return
-	}
-	assert.Truef(t, errors.Is(actualError, expectedError), "unexpected error type. expected: %v, got: %v", expectedError, actualError)
 }
 
 func assertCertificateRequestHasReadyCondition(t *testing.T, status cmmeta.ConditionStatus, reason string, cr *cmapi.CertificateRequest) {
