@@ -69,6 +69,7 @@ func newCfssl(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byt
 		return nil, fmt.Errorf("%w reason: %s", errCfsslAuthProvider, err)
 	}
 
+	//FIXME: Because of a bug in cfssl normalizeURL function, issuerSpec.URL must not end in a /
 	return &cfssl{
 		client:  cfsslclient.NewAuthServer(issuerSpec.URL, tlsconfig, authProvider),
 		label:   issuerSpec.Label,

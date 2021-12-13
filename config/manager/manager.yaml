@@ -31,13 +31,24 @@ spec:
             - --enable-leader-election
           image: controller:latest
           name: manager
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+            - name: healthz
+              containerPort: 8081
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: healthz
           resources:
             limits:
               cpu: 100m
-              memory: 30Mi
+              memory: 100Mi
             requests:
               cpu: 100m
-              memory: 20Mi
+              memory: 70Mi
           env:
             - name: SSL_CERT_FILE
               value: /ca/ca.pem
