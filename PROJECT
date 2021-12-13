@@ -1,10 +1,10 @@
 domain: wikimedia.org
 repo: gerrit.wikimedia.org/r/operations/software/cfssl-issuer
 resources:
-- group: sample-issuer
+- group: cfssl-issuer
   kind: Issuer
   version: v1alpha1
-- group: sample-issuer
+- group: cfssl-issuer
   kind: ClusterIssuer
   version: v1alpha1
 version: "2"

@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	issuerReadyConditionReason = "sample-issuer.IssuerController.Reconcile"
+	issuerReadyConditionReason = "cfssl-issuer.IssuerController.Reconcile"
 	defaultHealthCheckInterval = time.Minute
 )
 
