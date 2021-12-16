@@ -48,6 +48,10 @@ type IssuerSpec struct {
 	// multiple different profiles configured).
 	// If omitted, the "default" profile is used.
 	Profile string `json:"profile,omitempty"`
+
+	// A boolean specifying whether to include an "optimal" certificate bundle instead
+	// of the certificate.
+	Bundle bool `json:"bundle,omitempty"`
 }
 
 // IssuerStatus defines the observed state of Issuer

@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: certificate-by-bundleissuer
+spec:
+  commonName: certificate-by-bundleissuer.example.com
+  secretName: certificate-by-bundleissuer
+  issuerRef:
+    name: bundleissuer-sample
+    group: cfssl-issuer.wikimedia.org
+    kind: ClusterIssuer

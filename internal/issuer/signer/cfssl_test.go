@@ -1,6 +1,7 @@
 package signer
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -14,11 +15,13 @@ import (
 var (
 	errTestClientLabels   = errors.New("Labels do not match")
 	errTestClientProfiles = errors.New("Profiles do not match")
+	errTestClientBundle   = errors.New("Unexpected value for bundle parameter")
 	validIssuerSpec       = &cfsslissuerapi.IssuerSpec{
 		URL:            "https://api.signer1.tld",
 		AuthSecretName: "signer1",
 		Label:          "signer1-label",
 		Profile:        "signer1-profile",
+		Bundle:         true,
 	}
 	validCSR = []byte(`-----BEGIN CERTIFICATE REQUEST-----
 MIIBZjCCAQwCAQAwWTEPMA0GA1UEChMGU2ltcGxlMRkwFwYDVQQLExBTaW1wbGUg
@@ -35,6 +38,7 @@ yENwRHy2nk7/gUm2wbj9cC7KrS6Cb5UXsRk=
 type TestClient struct {
 	expectLabel   string
 	expectProfile string
+	expectBundle  bool
 }
 
 func (c *TestClient) assertLabelAndProfile(label, profile string) error {
@@ -46,7 +50,7 @@ func (c *TestClient) assertLabelAndProfile(label, profile string) error {
 	}
 	return nil
 }
-func (c *TestClient) Sign(jsonData []byte) ([]byte, error) {
+func (c *TestClient) sign(jsonData []byte) ([]byte, error) {
 	certReq := &cfsslapiCertificateRequest{}
 	if err := json.Unmarshal(jsonData, certReq); err != nil {
 		return nil, err
@@ -54,8 +58,17 @@ func (c *TestClient) Sign(jsonData []byte) ([]byte, error) {
 	if err := c.assertLabelAndProfile(certReq.Label, certReq.Profile); err != nil {
 		return nil, err
 	}
+	if certReq.Bundle != c.expectBundle {
+		return nil, errTestClientBundle
+	}
 	// Just return the CSR bytes to compare in test cases
 	return []byte(certReq.CSR), nil
+}
+func (c *TestClient) Sign(jsonData []byte) ([]byte, error) {
+	return c.sign(jsonData)
+}
+func (c *TestClient) BundleSign(jsonData []byte) ([]byte, error) {
+	return c.sign(jsonData)
 }
 func (c *TestClient) Info(jsonData []byte) (*cfsslinfo.Resp, error) {
 	infoReq := &cfsslapiInfoRequest{}
@@ -152,9 +165,11 @@ func TestCfsslSign(t *testing.T) {
 				client: &TestClient{
 					expectLabel:   "signer1-label",
 					expectProfile: "signer1-profile",
+					expectBundle:  true,
 				},
 				label:   "signer1-label",
 				profile: "signer1-profile",
+				bundle:  true,
 			},
 			csrBytes:      validCSR,
 			expectedError: nil,
@@ -186,7 +201,7 @@ func TestCfsslSign(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			result, err := tc.cfssl.Sign(tc.csrBytes)
+			result, err := tc.cfssl.Sign(context.Background(), tc.csrBytes)
 			if tc.expectedError != nil {
 				testutil.AssertErrorIs(t, tc.expectedError, err)
 			} else {

@@ -1,6 +1,7 @@
 package signer
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	cfsslclient "github.com/cloudflare/cfssl/api/client"
 	cfsslauth "github.com/cloudflare/cfssl/auth"
 	cfsslinfo "github.com/cloudflare/cfssl/info"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var (
@@ -24,7 +26,7 @@ type HealthChecker interface {
 type HealthCheckerBuilder func(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byte) (HealthChecker, error)
 
 type Signer interface {
-	Sign([]byte) ([]byte, error)
+	Sign(context.Context, []byte) ([]byte, error)
 }
 
 type SignerBuilder func(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byte) (Signer, error)
@@ -37,6 +39,7 @@ type cfsslapiCertificateRequest struct {
 	CSR     string `json:"certificate_request"`
 	Label   string `json:"label"`
 	Profile string `json:"profile,omitempty"`
+	Bundle  bool   `json:"bundle,omitempty"`
 }
 
 // Request body send to CFSSL info endpoint.
@@ -49,6 +52,7 @@ type cfsslapiInfoRequest struct {
 // BasicRemote is a stripped down version of cfssl.Remote to make mocking easier
 type BasicRemote interface {
 	Sign(jsonData []byte) ([]byte, error)
+	BundleSign(jsonData []byte) ([]byte, error)
 	Info(jsonData []byte) (*cfsslinfo.Resp, error)
 }
 
@@ -56,6 +60,7 @@ type cfssl struct {
 	client  BasicRemote
 	label   string
 	profile string
+	bundle  bool
 }
 
 func newCfssl(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byte) (*cfssl, error) {
@@ -74,6 +79,7 @@ func newCfssl(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byt
 		client:  cfsslclient.NewAuthServer(issuerSpec.URL, tlsconfig, authProvider),
 		label:   issuerSpec.Label,
 		profile: issuerSpec.Profile,
+		bundle:  issuerSpec.Bundle,
 	}, nil
 }
 
@@ -101,9 +107,8 @@ func (c *cfssl) Check() error {
 	return err
 }
 
-func (c *cfssl) Sign(csrBytes []byte) ([]byte, error) {
-	// Sign could return bundles as well, see
-	// https://github.com/cloudflare/cfssl/blob/master/doc/api/endpoint_sign.txt#L22
+func (c *cfssl) Sign(ctx context.Context, csrBytes []byte) ([]byte, error) {
+	log := ctrl.LoggerFrom(ctx)
 
 	// Verify valid CSR
 	_, err := parseCSR(csrBytes)
@@ -115,13 +120,20 @@ func (c *cfssl) Sign(csrBytes []byte) ([]byte, error) {
 		CSR:     string(csrBytes),
 		Label:   c.label,
 		Profile: c.profile,
+		Bundle:  c.bundle,
 	}
+	log.Info("Signing cert with", "label", c.label, "profile", c.profile, "bundle", c.bundle)
 	jsonData, err := json.Marshal(csr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to json.Marshal CSR: %w", err)
 	}
 
-	resp, err := c.client.Sign(jsonData)
+	var resp []byte
+	if c.bundle {
+		resp, err = c.client.BundleSign(jsonData)
+	} else {
+		resp, err = c.client.Sign(jsonData)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("Error from cfssl API: %w", err)
 	}

@@ -1,14 +1,23 @@
 # cfssl-issuer
 
-This is an an [External Issuer] for cert-manager to be used with [CFSSL] multirootca.
+This is an an [External Issuer] for cert-manager to be used with [CFSSL] `multirootca`.
 It is based off of the [sample-external-issuer] provided by cert-manager.
 
-## Install
+While it might work as well with `cfssl serve` instead of `multirootca` that has not been tested yet.
 
-```
-make build/install.yaml
-kubectl apply -f build/install.yaml
-```
+## Install
+For the installation of cert-manager, please see the documentation at https://cert-manager.io/docs/installation/.
+
+For the cfssl-issuer, there are helm charts (_cfssl-issuer_ and _cfssl-issuer-cdrs_) available at https://helm-charts.wikimedia.org/stable (source: [cfssl-issuer](https://gerrit.wikimedia.org/r/plugins/gitiles/operations/deployment-charts/+/refs/heads/master/charts/cfssl-issuer/), [cfssl-issuer-cdrs](https://gerrit.wikimedia.org/r/plugins/gitiles/operations/deployment-charts/+/refs/heads/master/charts/cfssl-issuer-crds/)). The corresponding docker images can be found at: https://docker-registry.wikimedia.org/cfssl-issuer/tags/
+
+Please see the helm charts `values.yaml` for examples on how to create Issuer/ClusterIssuer objects.
+
+## multirootca and bundles
+The cfssl-issuer supports fetching bundles instead of certificates from the CFSSL endpoint `/api/v1/cfssl/authsign` (see [doc/api/endpoint_authsign.txt](https://github.com/cloudflare/cfssl/blob/master/doc/api/endpoint_authsign.txt)) which is currently only supported in a forked version of multirootca which can be fount at: https://github.com/wikimedia/cfssl/tree/wmf
+
+A corresponding upstream PR is at: https://github.com/cloudflare/cfssl/pull/1218
+
+
 # Development
 
 You will need the following command line tools installed on your PATH:
@@ -132,7 +141,7 @@ Both are implemented by the `cfssl` signer in `internal/issuer/signer/cfssl.go`.
 
 ## End-to-end tests
 
-Those are implemented using [Kind] and a dummy CFSSL API container called simple-cfssl which I currently don't know where to put. Assuming access to it, e2e tests can be run via:
+Those are implemented using [Kind] and a dummy CFSSL API container called simple-cfssl (which can be build from this source tree as well). End-to-end tests can be run via:
 ```
 make e2e-all
 ```

@@ -1,10 +1,14 @@
 # cloud.google.com/go v0.81.0
 cloud.google.com/go/compute/metadata
+# github.com/PuerkitoBio/purell v1.1.1
+github.com/PuerkitoBio/purell
+# github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
+github.com/PuerkitoBio/urlesc
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/cloudflare/cfssl v1.6.1
+# github.com/cloudflare/cfssl v1.6.1 => github.com/wikimedia/cfssl v1.6.2-0.20211221103754-1bae9faebdd0
 ## explicit
 github.com/cloudflare/cfssl/api
 github.com/cloudflare/cfssl/api/client
@@ -51,6 +55,8 @@ github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/jsonschema
 github.com/googleapis/gnostic/openapiv2
+# github.com/goware/urlx v0.3.1
+github.com/goware/urlx
 # github.com/hashicorp/golang-lru v0.5.4
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
@@ -150,6 +156,7 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
+golang.org/x/text/width
 # golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 golang.org/x/time/rate
 # gomodules.xyz/jsonpatch/v2 v2.2.0
@@ -492,3 +499,4 @@ sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
+# github.com/cloudflare/cfssl => github.com/wikimedia/cfssl v1.6.2-0.20211221103754-1bae9faebdd0

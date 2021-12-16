@@ -12,3 +12,5 @@ require (
 	k8s.io/client-go v0.21.4
 	sigs.k8s.io/controller-runtime v0.9.7
 )
+
+replace github.com/cloudflare/cfssl => github.com/wikimedia/cfssl v1.6.2-0.20211221103754-1bae9faebdd0

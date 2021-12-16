@@ -46,6 +46,10 @@ spec:
                   used to authenticate against cfssl API as well as an optional "additional_data"
                   field.
                 type: string
+              bundle:
+                description: A boolean specifying whether to include an "optimal"
+                  certificate bundle instead of the certificate.
+                type: boolean
               label:
                 description: A string specifying which CFSSL signer to be appointed
                   to sign the CSR. Label is mandatory as the info endpoint of the

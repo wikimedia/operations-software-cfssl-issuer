@@ -1,0 +1,9 @@
+apiVersion: cfssl-issuer.wikimedia.org/v1alpha1
+kind: ClusterIssuer
+metadata:
+  name: bundleissuer-sample
+spec:
+  authSecretName: "clusterissuer-sample-credentials"
+  url: "https://dead.end.local,https://api.simple-cfssl.svc.cluster.local:30888"
+  label: "intermediate1"
+  bundle: true
