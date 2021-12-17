@@ -43,13 +43,17 @@ INSTALL_YAML ?= build/install.yaml
 
 all: manifests manager
 
+vendor:
+	go mod tidy
+	go mod vendor
+
 # Run tests
 test: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
 # Build manager binary
-manager: generate fmt vet
+manager: generate fmt vet vendor
 	go build \
 		-ldflags="-X=gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/version.Version=${VERSION}" \
 		-o bin/manager main.go
@@ -102,7 +106,7 @@ generate: ${CONTROLLER_GEN}
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
-docker-build:
+docker-build: vendor
 	docker build \
 		--build-arg VERSION=$(VERSION) \
 		--tag ${IMG} \
@@ -154,6 +158,7 @@ deploy-cert-manager: ## Deploy cert-manager in the configured Kubernetes cluster
 
 .PHONY: deploy-simple-cfssl
 deploy-simple-cfssl:
+	kubectl delete -f simple-cfssl/simple-cfssl.yaml
 	kubectl apply -f simple-cfssl/simple-cfssl.yaml
 	kubectl -n simple-cfssl wait --for=condition=Available --timeout=10s deployment simple-cfssl
 	kubectl -n simple-cfssl exec -it deployment/simple-cfssl -- cat /cfssl/ca/ca.pem > simple-cfssl-ca.pem
@@ -173,6 +178,7 @@ e2e: deploy-cert-manager deploy ## Run e2e on whatever cluster is active in .kub
 	kubectl wait --for=condition=Ready --timeout=10s certificates.cert-manager.io certificate-by-clusterissuer
 
 	kubectl delete --filename config/samples
+	kubectl delete secrets --field-selector type=kubernetes.io/tls
 
 .PHONY: e2e-all
 e2e-all: docker-build docker-build-simple-cfssl kind-cluster kind-load deploy-simple-cfssl e2e ## Create local kind cluster and run e2e there
