@@ -7,7 +7,7 @@ ENV CGO_ENABLED=0 \
 
 WORKDIR /workdir
 
-ARG CFSSL_VERSION=wmf-dev
+ARG CFSSL_VERSION=wmf
 RUN git clone https://github.com/wikimedia/cfssl.git && \
     cd cfssl && git checkout ${CFSSL_VERSION} && \
     make all
