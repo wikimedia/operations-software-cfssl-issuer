@@ -17,6 +17,10 @@ The cfssl-issuer supports fetching bundles instead of certificates from the CFSS
 
 A corresponding upstream PR is at: https://github.com/cloudflare/cfssl/pull/1218
 
+## Root CA in kubernetes.io/tls Secret
+In case the Issuer is configured with `bundle: true` (see node on multirootca support from above), the root CA is returned by the multirootca API and will be provided to the user in the resulting `kubernetes.io/tls` Secret.
+
+As the multirootca API lacks the `/api/v1/cfssl/bundle` endpoint, this is unfortunately not possible with a `bundle: false` Issuer.
 
 # Development
 

@@ -50,24 +50,25 @@ func (c *TestClient) assertLabelAndProfile(label, profile string) error {
 	}
 	return nil
 }
-func (c *TestClient) sign(jsonData []byte) ([]byte, error) {
+func (c *TestClient) sign(jsonData []byte) ([]byte, []byte, error) {
 	certReq := &cfsslapiCertificateRequest{}
 	if err := json.Unmarshal(jsonData, certReq); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := c.assertLabelAndProfile(certReq.Label, certReq.Profile); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if certReq.Bundle != c.expectBundle {
-		return nil, errTestClientBundle
+		return nil, nil, errTestClientBundle
 	}
 	// Just return the CSR bytes to compare in test cases
-	return []byte(certReq.CSR), nil
+	return []byte(certReq.CSR), []byte(certReq.CSR), nil
 }
 func (c *TestClient) Sign(jsonData []byte) ([]byte, error) {
-	return c.sign(jsonData)
+	_, cert, err := c.sign(jsonData)
+	return cert, err
 }
-func (c *TestClient) BundleSign(jsonData []byte) ([]byte, error) {
+func (c *TestClient) BundleSign(jsonData []byte) ([]byte, []byte, error) {
 	return c.sign(jsonData)
 }
 func (c *TestClient) Info(jsonData []byte) (*cfsslinfo.Resp, error) {
@@ -201,12 +202,12 @@ func TestCfsslSign(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			result, err := tc.cfssl.Sign(context.Background(), tc.csrBytes)
+			_, cert, err := tc.cfssl.Sign(context.Background(), tc.csrBytes)
 			if tc.expectedError != nil {
 				testutil.AssertErrorIs(t, tc.expectedError, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tc.csrBytes, result, "unexpected result")
+				assert.Equal(t, tc.csrBytes, cert, "unexpected result")
 			}
 		})
 	}

@@ -177,6 +177,10 @@ e2e: deploy-cert-manager deploy ## Run e2e on whatever cluster is active in .kub
 	kubectl wait --for=condition=Ready --timeout=10s certificaterequests.cert-manager.io clusterissuer-sample
 	kubectl wait --for=condition=Ready --timeout=10s certificates.cert-manager.io certificate-by-clusterissuer
 
+	kubectl wait --for=condition=Ready --timeout=10s clusterissuers.cfssl-issuer.wikimedia.org bundleissuer-sample
+	kubectl wait --for=condition=Ready --timeout=10s certificates.cert-manager.io certificate-by-bundleissuer
+	kubectl get secrets certificate-by-bundleissuer -o jsonpath='{.data.ca\.crt}' | grep -q ^
+
 	kubectl delete --filename config/samples
 	kubectl delete secrets --field-selector type=kubernetes.io/tls
 

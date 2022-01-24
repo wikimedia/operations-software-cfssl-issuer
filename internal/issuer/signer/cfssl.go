@@ -26,7 +26,7 @@ type HealthChecker interface {
 type HealthCheckerBuilder func(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byte) (HealthChecker, error)
 
 type Signer interface {
-	Sign(context.Context, []byte) ([]byte, error)
+	Sign(context.Context, []byte) ([]byte, []byte, error)
 }
 
 type SignerBuilder func(issuerSpec *cfsslissuerapi.IssuerSpec, secretData map[string][]byte) (Signer, error)
@@ -52,7 +52,7 @@ type cfsslapiInfoRequest struct {
 // BasicRemote is a stripped down version of cfssl.Remote to make mocking easier
 type BasicRemote interface {
 	Sign(jsonData []byte) ([]byte, error)
-	BundleSign(jsonData []byte) ([]byte, error)
+	BundleSign(jsonData []byte) ([]byte, []byte, error)
 	Info(jsonData []byte) (*cfsslinfo.Resp, error)
 }
 
@@ -107,13 +107,13 @@ func (c *cfssl) Check() error {
 	return err
 }
 
-func (c *cfssl) Sign(ctx context.Context, csrBytes []byte) ([]byte, error) {
+func (c *cfssl) Sign(ctx context.Context, csrBytes []byte) ([]byte, []byte, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	// Verify valid CSR
 	_, err := parseCSR(csrBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	csr := cfsslapiCertificateRequest{
@@ -125,18 +125,18 @@ func (c *cfssl) Sign(ctx context.Context, csrBytes []byte) ([]byte, error) {
 	log.Info("Signing cert with", "label", c.label, "profile", c.profile, "bundle", c.bundle)
 	jsonData, err := json.Marshal(csr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to json.Marshal CSR: %w", err)
+		return nil, nil, fmt.Errorf("Failed to json.Marshal CSR: %w", err)
 	}
 
-	var resp []byte
+	var ca, cert []byte
 	if c.bundle {
-		resp, err = c.client.BundleSign(jsonData)
+		ca, cert, err = c.client.BundleSign(jsonData)
 	} else {
-		resp, err = c.client.Sign(jsonData)
+		cert, err = c.client.Sign(jsonData)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Error from cfssl API: %w", err)
+		return nil, nil, fmt.Errorf("Error from cfssl API: %w", err)
 	}
 
-	return resp, nil
+	return ca, cert, nil
 }
