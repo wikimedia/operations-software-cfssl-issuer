@@ -13,4 +13,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.9.7
 )
 
-replace github.com/cloudflare/cfssl => github.com/wikimedia/cfssl v1.6.2-0.20220126160151-b264be5582b2
+replace github.com/cloudflare/cfssl => github.com/wikimedia/cfssl v1.6.2-0.20220214092419-208a146abacd

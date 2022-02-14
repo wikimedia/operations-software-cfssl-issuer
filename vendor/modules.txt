@@ -8,7 +8,7 @@ github.com/PuerkitoBio/urlesc
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/cloudflare/cfssl v1.6.1 => github.com/wikimedia/cfssl v1.6.2-0.20220126160151-b264be5582b2
+# github.com/cloudflare/cfssl v1.6.1 => github.com/wikimedia/cfssl v1.6.2-0.20220214092419-208a146abacd
 ## explicit
 github.com/cloudflare/cfssl/api
 github.com/cloudflare/cfssl/api/client
@@ -499,4 +499,4 @@ sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
-# github.com/cloudflare/cfssl => github.com/wikimedia/cfssl v1.6.2-0.20220126160151-b264be5582b2
+# github.com/cloudflare/cfssl => github.com/wikimedia/cfssl v1.6.2-0.20220214092419-208a146abacd
