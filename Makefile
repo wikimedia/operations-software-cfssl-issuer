@@ -132,7 +132,7 @@ ${CONTROLLER_GEN}: | ${BIN}
 	trap "rm -rf $${CONTROLLER_GEN_TMP_DIR}" EXIT
 	cd $${CONTROLLER_GEN_TMP_DIR}
 	go mod init tmp
-	GOBIN=$${CONTROLLER_GEN_TMP_DIR} go get sigs.k8s.io/controller-tools/cmd/controller-gen@v${CONTROLLER_GEN_VERSION}
+	GOBIN=$${CONTROLLER_GEN_TMP_DIR} go install sigs.k8s.io/controller-tools/cmd/controller-gen@v${CONTROLLER_GEN_VERSION}
 	mv $${CONTROLLER_GEN_TMP_DIR}/controller-gen ${CONTROLLER_GEN}
 
 
