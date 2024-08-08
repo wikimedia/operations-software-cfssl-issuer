@@ -1,19 +1,6 @@
-FROM golang:1.16.3 as builder
+FROM docker-registry.wikimedia.org/bullseye
 
-ENV CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64 \
-    GO111MODULE=on
-
-WORKDIR /workdir
-
-ARG CFSSL_VERSION=wmf
-RUN git clone https://github.com/wikimedia/cfssl.git && \
-    cd cfssl && git checkout ${CFSSL_VERSION} && \
-    make all
-
-FROM debian:bullseye
-COPY --from=builder /workdir/cfssl/bin/* /usr/bin/
+RUN apt-get update && apt-get install -y --no-install-recommends golang-cfssl
 
 # Get defaults from:
 # docker run --rm cfssl/cfssl print-defaults config > ca-config.json
