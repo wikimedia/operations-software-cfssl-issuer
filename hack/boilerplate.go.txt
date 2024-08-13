@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The cert-manager Authors
+Copyright 2023 The cert-manager Authors.
 Copyright 2021 The Wikimedia Foundation, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");

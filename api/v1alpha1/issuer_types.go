@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The cert-manager Authors
+Copyright 2023 The cert-manager Authors.
 Copyright 2021 The Wikimedia Foundation, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,8 +62,8 @@ type IssuerStatus struct {
 	Conditions []IssuerCondition `json:"conditions,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
 
 // Issuer is the Schema for the issuers API
 type Issuer struct {
@@ -74,7 +74,7 @@ type Issuer struct {
 	Status IssuerStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // IssuerList contains a list of Issuer
 type IssuerList struct {

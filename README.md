@@ -27,11 +27,11 @@ As the multirootca API lacks the `/api/v1/cfssl/bundle` endpoint, this is unfort
 You will need the following command line tools installed on your PATH:
 
 * [Git](https://git-scm.com/)
-* [Golang v1.17+](https://golang.org/)
+* [Golang v1.20+](https://golang.org/)
 * [Docker v17.03+](https://docs.docker.com/install/)
-* [Kind v0.12.0+](https://kind.sigs.k8s.io/docs/user/quick-start/)
-* [Kubectl v1.11.3+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* [Kubebuilder v2.3.1+](https://book.kubebuilder.io/quick-start.html#installation)
+* [Kind v0.18.0+](https://kind.sigs.k8s.io/docs/user/quick-start/)
+* [Kubectl v1.26.3+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+* [Kubebuilder v3.9.1+](https://book.kubebuilder.io/quick-start.html#installation)
 * [Kustomize v3.8.1+](https://kustomize.io/)
 
 You may also want to read: the [Kubebuilder Book] and the [cert-manager Concepts Documentation].
@@ -135,7 +135,7 @@ The `signer` package contains a new simple `Interface` and a factory function de
 
 ```
 type Signer interface {
-    Sign([]byte) ([]byte, error)
+    Sign(context.Context, []byte) ([]byte, []byte, error)
 }
 
 type SignerBuilder func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (Signer, error)
@@ -154,6 +154,148 @@ If you already have a running Kubernetes cluster and want to test using the curr
 ```
 make docker-build deploy-simple-cfssl e2e
 ```
+
+In the unit-tests, we can use a simple byte string for the certificate, but in E2E tests later we will use real certificate signing requests and real certificates.
+
+#### An example signer
+
+For the purposes of this example external issuer,
+we will implement an `exampleSigner` which implements both the `HealthChecker` and the `Signer` interfaces, and
+which signs the CSR using a static in-memory CA certificate.
+
+In `internal/issuer/signer/signer.go` you will see that we:
+decode the supplied CSR bytes,
+and then sign the certificate using some libraries that were copied from the Kubernetes project.
+This simple implementation is just sufficient to allow us (later) to perform some E2E tests with cert-manager.
+
+In your external issuer, this is where you will plug in your CA client library,
+or where you will instantiate an HTTP client and connect to your API.
+
+Notice also that we add two concrete factory functions which are supplied to the `IssuerReconciler` and `CertificateRequestReconciler` in `main.go`.
+
+#### What about the ClusterIssuerReconciler?
+
+We have so far abandoned development of the `ClusterIssuerReconciler`, and that's because we want to re-use the `IssuerReconciler` rather than duplicating everything.
+
+So here we delete the skaffolded `controllers/clusterissuer_controller.go` and update the `issuer_controller.go` to handle both types.
+
+As well as juggling the code to handle both types, we:
+aggregate the Kubebuilder RBAC annotations, and
+add a new command line flag which allows us to set a `--cluster-resource-namespace`.
+
+The `--cluster-resource-namespace` is the namespace where the issuer will look for `Secret` resources referred to by a `ClusterIssuer`,
+since `ClusterIssuer` is cluster-scoped.
+The default value of the flag is the namespace where the issuer is running in the cluster.
+
+### Logging and Events
+
+We want to make it easy to debug problems with the issuer,
+so in addition to setting Conditions on the Issuer, ClusterIssuer and CertificateRequest,
+we can provide more feedback to the user by logging Kubernetes Events.
+You may want to read more about [Application Introspection and Debugging][] before continuing.
+
+[Application Introspection and Debugging]: https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application-introspection/
+
+Kubernetes Events are saved to the API server on a best-effort basis,
+they are (usually) associated with some other Kubernetes resource,
+and they are temporary; old Events are periodically purged from the API server.
+This allows tools such as `kubectl describe <resource-kind> <resource-name>` to show not only the resource details,
+but also a table of the recent events associated with that resource.
+
+The aim is to produce helpful debug output that looks like this:
+
+```
+$ kubectl describe clusterissuers.sample-issuer.example.com clusterissuer-sample
+...
+    Type:                  Ready
+Events:
+  Type     Reason            Age                From                    Message
+  ----     ------            ----               ----                    -------
+  Normal   IssuerReconciler  13s                cfssl-issuer  First seen
+  Warning  IssuerReconciler  13s (x3 over 13s)  cfssl-issuer  Temporary error. Retrying: failed to get Secret containing Issuer credentials, secret name: cfssl-issuer-system/clusterissuer-sample-credentials, reason: Secret "clusterissuer-sample-credentials" not found
+  Normal   IssuerReconciler  13s (x3 over 13s)  cfssl-issuer  Success
+```
+And this:
+
+```
+$ kubectl describe certificaterequests.cert-manager.io issuer-sample
+...
+Events:
+  Type     Reason                        Age   From                    Message
+  ----     ------                        ----  ----                    -------
+  Normal   CertificateRequestReconciler  23m   cfssl-issuer  Initialising Ready condition
+  Warning  CertificateRequestReconciler  23m   cfssl-issuer  Temporary error. Retrying: error getting issuer: Issuer.sample-issuer.example.com "issuer-sample" not found
+  Normal   CertificateRequestReconciler  23m   cfssl-issuer  Signed
+
+```
+
+First add [record.EventRecorder][] attributes to the `IssuerReconciler` and to the `CertificateRequestReconciler`.
+And then in the Reconciler code, you can then generate an event by executing `r.recorder.Eventf(...)` whenever a significant change is made to the resource.
+
+[record.EventRecorder]: https://pkg.go.dev/k8s.io/client-go/tools/record#EventRecorder
+
+You can also write unit tests to verify the Reconciler events by using a [record.FakeRecorder][].
+
+[record.FakeRecorder]: https://pkg.go.dev/k8s.io/client-go/tools/record#FakeRecorder
+
+See [PR 10: Generate Kubernetes Events](https://github.com/cert-manager/sample-external-issuer/pull/10) for an example of how you might generate events in your issuer.
+
+### End-to-end tests
+
+Now our issuer is almost feature complete and it should be possible to write an end-to-end test that
+deploys a cert-manager `Certificate`
+referring to an external `Issuer` and check that a signed `Certificate` is saved to the expected secret.
+
+We can make such a test easier by tidying up the `Makefile` and adding some new targets
+which will help create a test cluster and to help install cert-manager.
+
+We can write a simple end-to-end test which deploys a `Certificate` manifest and waits for it to be ready.
+
+```console
+kubectl apply --filename config/samples
+kubectl wait --for=condition=Ready --timeout=5s issuers.sample-issuer.example.com issuer-sample
+kubectl wait --for=condition=Ready --timeout=5s  certificates.cert-manager.io certificate-by-issuer
+```
+
+You can of course write more complete tests than this,
+but this is a good start and demonstrates that the issuer is doing what we hoped it would do.
+
+Run the tests as follows:
+
+```bash
+# Create a Kind cluster along with cert-manager.
+make kind-cluster deploy-cert-manager
+
+# Wait for cert-manager to start...
+
+# Build and install cfssl-issuer and run the E2E tests.
+# This step can be run iteratively when ever you make changes to the code or to the installation manifests.
+make docker-build kind-load deploy e2e
+```
+
+#### Continuous Integration
+
+You should configure a CI system to automatically run the unit-tests when the code changes.
+See the `.github/workflows/`  directory for some examples of using GitHub Actions
+which are triggered by changes to pull request branches and by any changes to the master branch.
+
+The E2E tests can be executed with GitHub Actions too.
+The GitHub Actions Ubuntu runner has Docker installed and is capable of running a Kind cluster for the E2E tests.
+The Kind cluster logs can be saved in the event of an E2E test failure,
+and uploaded as a GitHub Actions artifact,
+to make it easier to diagnose E2E test failures.
+
+## Security considerations
+
+We use a [Distroless Docker Image][] as our Docker base image,
+and we configure our `manager` process to run as `USER: nonroot:nonroot`.
+This limits the privileges of the `manager` process in the cluster.
+
+The [kube-rbac-proxy][] sidecar Docker image also uses a non-root user by default (since v0.7.0).
+
+Additionally we [Configure a Security Context][] for the manager Pod.
+We set `runAsNonRoot`, which ensure that the Kubelet will validate the image at runtime
+to ensure that it does not run as UID 0 (root) and fail to start the container if it does.
 
 ## Links
 

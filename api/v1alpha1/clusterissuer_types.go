@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The cert-manager Authors
+Copyright 2023 The cert-manager Authors.
 Copyright 2021 The Wikimedia Foundation, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-// +kubebuilder:subresource:status
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
+//+kubebuilder:resource:scope=Cluster
 
 // ClusterIssuer is the Schema for the clusterissuers API
 type ClusterIssuer struct {
@@ -34,7 +34,7 @@ type ClusterIssuer struct {
 	Status IssuerStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // ClusterIssuerList contains a list of ClusterIssuer
 type ClusterIssuerList struct {

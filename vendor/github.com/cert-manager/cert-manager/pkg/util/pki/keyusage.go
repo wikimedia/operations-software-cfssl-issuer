@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"errors"
 )
 
 // Copied from x509.go
@@ -126,10 +127,9 @@ func reverseBitsInAByte(in byte) byte {
 }
 
 // Adapted from x509.go
-func buildASN1KeyUsageRequest(usage x509.KeyUsage) (pkix.Extension, error) {
-	OIDExtensionKeyUsage := pkix.Extension{
-		Id: OIDExtensionKeyUsage,
-	}
+func MarshalKeyUsage(usage x509.KeyUsage) (pkix.Extension, error) {
+	ext := pkix.Extension{Id: OIDExtensionKeyUsage}
+
 	var a [2]byte
 	a[0] = reverseBitsInAByte(byte(usage))
 	a[1] = reverseBitsInAByte(byte(usage >> 8))
@@ -141,10 +141,26 @@ func buildASN1KeyUsageRequest(usage x509.KeyUsage) (pkix.Extension, error) {
 
 	bitString := a[:l]
 	var err error
-	OIDExtensionKeyUsage.Value, err = asn1.Marshal(asn1.BitString{Bytes: bitString, BitLength: asn1BitLength(bitString)})
-	if err != nil {
-		return pkix.Extension{}, err
+	ext.Value, err = asn1.Marshal(asn1.BitString{Bytes: bitString, BitLength: asn1BitLength(bitString)})
+	return ext, err
+}
+
+// Adapted from x509.go
+func MarshalExtKeyUsage(extUsages []x509.ExtKeyUsage, unknownUsages []asn1.ObjectIdentifier) (pkix.Extension, error) {
+	ext := pkix.Extension{Id: OIDExtensionExtendedKeyUsage}
+
+	oids := make([]asn1.ObjectIdentifier, len(extUsages)+len(unknownUsages))
+	for i, u := range extUsages {
+		if oid, ok := OIDFromExtKeyUsage(u); ok {
+			oids[i] = oid
+		} else {
+			return ext, errors.New("x509: unknown extended key usage")
+		}
 	}
 
-	return OIDExtensionKeyUsage, nil
+	copy(oids[len(extUsages):], unknownUsages)
+
+	var err error
+	ext.Value, err = asn1.Marshal(oids)
+	return ext, err
 }

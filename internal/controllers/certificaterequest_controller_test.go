@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -18,8 +19,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
+	clock "k8s.io/utils/clock/testing"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -27,7 +29,6 @@ import (
 
 	cfsslissuerapi "gerrit.wikimedia.org/r/operations/software/cfssl-issuer/api/v1alpha1"
 	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/issuer/signer"
-	"gerrit.wikimedia.org/r/operations/software/cfssl-issuer/internal/testutil"
 )
 
 var (
@@ -48,7 +49,9 @@ func TestCertificateRequestReconcile(t *testing.T) {
 
 	type testCase struct {
 		name                         types.NamespacedName
-		objects                      []client.Object
+		secretObjects                []client.Object
+		issuerObjects                []client.Object
+		crObjects                    []client.Object
 		signerBuilder                signer.SignerBuilder
 		clusterResourceNamespace     string
 		expectedResult               ctrl.Result
@@ -61,7 +64,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 	tests := map[string]testCase{
 		"success-issuer": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -79,29 +82,31 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
-				&cfsslissuerapi.Issuer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "issuer1",
-						Namespace: "ns1",
-					},
-					Spec: cfsslissuerapi.IssuerSpec{
-						AuthSecretName: "issuer1-credentials",
-					},
-					Status: cfsslissuerapi.IssuerStatus{
-						Conditions: []cfsslissuerapi.IssuerCondition{
-							{
-								Type:   cfsslissuerapi.IssuerConditionReady,
-								Status: cfsslissuerapi.ConditionTrue,
-							},
+			},
+			issuerObjects: []client.Object{&cfsslissuerapi.Issuer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "issuer1",
+					Namespace: "ns1",
+				},
+				Spec: cfsslissuerapi.IssuerSpec{
+					AuthSecretName: "issuer1-credentials",
+				},
+				Status: cfsslissuerapi.IssuerStatus{
+					Conditions: []cfsslissuerapi.IssuerCondition{
+						{
+							Type:   cfsslissuerapi.IssuerConditionReady,
+							Status: cfsslissuerapi.ConditionTrue,
 						},
 					},
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "issuer1-credentials",
-						Namespace: "ns1",
-					},
+			},
+			},
+			secretObjects: []client.Object{&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "issuer1-credentials",
+					Namespace: "ns1",
 				},
+			},
 			},
 			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
@@ -113,7 +118,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"success-cluster-issuer": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -131,6 +136,8 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.ClusterIssuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "clusterissuer1",
@@ -147,13 +154,13 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "clusterissuer1-credentials",
-						Namespace: "kube-system",
-					},
-				},
 			},
+			secretObjects: []client.Object{&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "clusterissuer1-credentials",
+					Namespace: "kube-system",
+				},
+			}},
 			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
 			},
@@ -168,7 +175,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"issuer-ref-foreign-group": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -181,7 +188,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"certificaterequest-already-ready": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -203,7 +210,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"certificaterequest-missing-ready-condition": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -223,7 +230,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"issuer-ref-unknown-kind": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -247,7 +254,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"issuer-not-found": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -272,7 +279,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"clusterissuer-not-found": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -297,7 +304,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"issuer-not-ready": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -315,6 +322,8 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
@@ -336,7 +345,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"issuer-secret-not-found": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -354,6 +363,8 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
@@ -378,7 +389,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"signer-builder-error": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -396,6 +407,16 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			secretObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "issuer1-credentials",
+						Namespace: "ns1",
+					},
+				},
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
@@ -411,12 +432,6 @@ func TestCertificateRequestReconcile(t *testing.T) {
 								Status: cfsslissuerapi.ConditionTrue,
 							},
 						},
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "issuer1-credentials",
-						Namespace: "ns1",
 					},
 				},
 			},
@@ -429,7 +444,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"signer-error": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -447,6 +462,16 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			secretObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "issuer1-credentials",
+						Namespace: "ns1",
+					},
+				},
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
@@ -464,12 +489,6 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "issuer1-credentials",
-						Namespace: "ns1",
-					},
-				},
 			},
 			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{errSign: errors.New("simulated sign error")}, nil
@@ -480,7 +499,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"request-not-approved": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -494,6 +513,16 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			secretObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "issuer1-credentials",
+						Namespace: "ns1",
+					},
+				},
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
@@ -511,12 +540,6 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "issuer1-credentials",
-						Namespace: "ns1",
-					},
-				},
 			},
 			signerBuilder: func(*cfsslissuerapi.IssuerSpec, map[string][]byte) (signer.Signer, error) {
 				return &fakeSigner{}, nil
@@ -526,7 +549,7 @@ func TestCertificateRequestReconcile(t *testing.T) {
 		},
 		"request-denied": {
 			name: types.NamespacedName{Namespace: "ns1", Name: "cr1"},
-			objects: []client.Object{
+			crObjects: []client.Object{
 				cmgen.CertificateRequest(
 					"cr1",
 					cmgen.SetCertificateRequestNamespace("ns1"),
@@ -544,6 +567,8 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						Status: cmmeta.ConditionUnknown,
 					}),
 				),
+			},
+			issuerObjects: []client.Object{
 				&cfsslissuerapi.Issuer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1",
@@ -561,6 +586,8 @@ func TestCertificateRequestReconcile(t *testing.T) {
 						},
 					},
 				},
+			},
+			secretObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "issuer1-credentials",
@@ -585,9 +612,14 @@ func TestCertificateRequestReconcile(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			eventRecorder := record.NewFakeRecorder(100)
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
-				WithObjects(tc.objects...).
+				WithObjects(tc.secretObjects...).
+				WithObjects(tc.crObjects...).
+				WithObjects(tc.issuerObjects...).
+				WithStatusSubresource(tc.issuerObjects...).
+				WithStatusSubresource(tc.crObjects...).
 				Build()
 			controller := CertificateRequestReconciler{
 				Client:                   fakeClient,
@@ -596,41 +628,120 @@ func TestCertificateRequestReconcile(t *testing.T) {
 				SignerBuilder:            tc.signerBuilder,
 				CheckApprovedCondition:   true,
 				Clock:                    fixedClock,
+				recorder:                 eventRecorder,
 			}
-			result, err := controller.Reconcile(
+
+			var crBefore cmapi.CertificateRequest
+			if err := fakeClient.Get(context.TODO(), tc.name, &crBefore); err != nil {
+				require.NoError(t, client.IgnoreNotFound(err), "unexpected error from fake client")
+			}
+
+			result, reconcileErr := controller.Reconcile(
 				ctrl.LoggerInto(context.TODO(), logrtesting.NewTestLogger(t)),
 				reconcile.Request{NamespacedName: tc.name},
 			)
+
+			var actualEvents []string
+			for {
+				select {
+				case e := <-eventRecorder.Events:
+					actualEvents = append(actualEvents, e)
+					continue
+				default:
+					break
+				}
+				break
+			}
 			if tc.expectedError != nil {
-				testutil.AssertErrorIs(t, tc.expectedError, err)
+				assertErrorIs(t, tc.expectedError, reconcileErr)
 			} else {
-				assert.NoError(t, err)
+				assert.NoError(t, reconcileErr)
 			}
 
 			assert.Equal(t, tc.expectedResult, result, "Unexpected result")
 
-			var cr cmapi.CertificateRequest
-			err = fakeClient.Get(context.TODO(), tc.name, &cr)
-			require.NoError(t, client.IgnoreNotFound(err), "unexpected error from fake client")
-			if err == nil {
-				if tc.expectedReadyConditionStatus != "" {
-					assertCertificateRequestHasReadyCondition(t, tc.expectedReadyConditionStatus, tc.expectedReadyConditionReason, &cr)
-				}
-				assert.Equal(t, tc.expectedCertificate, cr.Status.Certificate)
+			// For tests where the target CertificateRequest exists, we perform some further checks,
+			// otherwise exit early.
+			var crAfter cmapi.CertificateRequest
+			if err := fakeClient.Get(context.TODO(), tc.name, &crAfter); err != nil {
+				require.NoError(t, client.IgnoreNotFound(err), "unexpected error from fake client")
+				return
+			}
 
-				if !apiequality.Semantic.DeepEqual(tc.expectedFailureTime, cr.Status.FailureTime) {
-					assert.Equal(t, tc.expectedFailureTime, cr.Status.FailureTime)
+			// If the CR is unchanged after the Reconcile then we expect no
+			// Events and need not perform any further checks.
+			// NB: controller-runtime FakeClient updates the Resource version.
+			if crBefore.ResourceVersion == crAfter.ResourceVersion {
+				assert.Empty(t, actualEvents, "Events should only be created if the CertificateRequest is modified")
+				return
+			}
+
+			// Certificate checks.
+			// Always check the certificate, in case it has been unexpectedly
+			// set without also having first added and updated the Ready
+			// condition.
+			assert.Equal(t, tc.expectedCertificate, crAfter.Status.Certificate)
+
+			if !apiequality.Semantic.DeepEqual(tc.expectedFailureTime, crAfter.Status.FailureTime) {
+				assert.Equal(t, tc.expectedFailureTime, crAfter.Status.FailureTime)
+			}
+
+			// Condition checks
+			condition := cmutil.GetCertificateRequestCondition(&crAfter, cmapi.CertificateRequestConditionReady)
+			// If the CertificateRequest is expected to have a Ready condition then we perform some extra checks.
+			if tc.expectedReadyConditionStatus != "" {
+				if assert.NotNilf(
+					t,
+					condition,
+					"Ready condition was expected but not found: tc.expectedReadyConditionStatus == %v",
+					tc.expectedReadyConditionStatus,
+				) {
+					verifyCertificateRequestReadyCondition(t, tc.expectedReadyConditionStatus, tc.expectedReadyConditionReason, condition)
 				}
+			} else {
+				assert.Nil(t, condition, "Unexpected Ready condition")
+			}
+
+			// Event checks
+			if condition != nil {
+				// The desired Event behaviour is as follows:
+				//
+				// * An Event should always be generated when the Ready condition is set.
+				// * Event contents should match the status and message of the condition.
+				// * Event type should be Warning if the Reconcile failed (temporary error)
+				// * Event type should be warning if the condition status is failed (permanent error)
+				expectedEventType := corev1.EventTypeNormal
+				if reconcileErr != nil || condition.Reason == cmapi.CertificateRequestReasonFailed {
+					expectedEventType = corev1.EventTypeWarning
+				}
+				// If there was a Reconcile error, there will be a retry and
+				// this should be reflected in the Event message.
+				eventMessage := condition.Message
+				if reconcileErr != nil {
+					eventMessage = fmt.Sprintf("Temporary error. Retrying: %v", reconcileErr)
+				}
+				// Each Reconcile should only emit a single Event
+				assert.Equal(
+					t,
+					[]string{fmt.Sprintf("%s %s %s", expectedEventType, cfsslissuerapi.EventReasonCertificateRequestReconciler, eventMessage)},
+					actualEvents,
+					"expected a single event matching the condition",
+				)
+			} else {
+				assert.Empty(t, actualEvents, "Found unexpected Events without a corresponding Ready condition")
 			}
 		})
 	}
 }
 
-func assertCertificateRequestHasReadyCondition(t *testing.T, status cmmeta.ConditionStatus, reason string, cr *cmapi.CertificateRequest) {
-	condition := cmutil.GetCertificateRequestCondition(cr, cmapi.CertificateRequestConditionReady)
-	if !assert.NotNil(t, condition, "Ready condition not found") {
+func assertErrorIs(t *testing.T, expectedError, actualError error) {
+	if !assert.Error(t, actualError) {
 		return
 	}
+	assert.Truef(t, errors.Is(actualError, expectedError), "unexpected error type. expected: %v, got: %v", expectedError, actualError)
+}
+
+func verifyCertificateRequestReadyCondition(t *testing.T, status cmmeta.ConditionStatus, reason string, condition *cmapi.CertificateRequestCondition) {
 	assert.Equal(t, status, condition.Status, "unexpected condition status")
 	validReasons := sets.NewString(
 		cmapi.CertificateRequestReasonPending,

@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -36,7 +37,6 @@ import (
 )
 
 const (
-	issuerReadyConditionReason = "cfssl-issuer.IssuerController.Reconcile"
 	defaultHealthCheckInterval = time.Minute
 )
 
@@ -54,11 +54,13 @@ type IssuerReconciler struct {
 	Scheme                   *runtime.Scheme
 	ClusterResourceNamespace string
 	HealthCheckerBuilder     signer.HealthCheckerBuilder
+	recorder                 record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cfssl-issuer.wikimedia.org,resources=issuers;clusterissuers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cfssl-issuer.wikimedia.org,resources=issuers/status;clusterissuers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *IssuerReconciler) newIssuer() (client.Object, error) {
 	issuerGVK := cfsslissuerapi.GroupVersion.WithKind(r.Kind)
@@ -91,10 +93,30 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return ctrl.Result{}, nil
 	}
 
+	// report gives feedback by updating the Ready Condition of the {Cluster}Issuer
+	// For added visibility we also log a message and create a Kubernetes Event.
+	report := func(conditionStatus cfsslissuerapi.ConditionStatus, message string, err error) {
+		eventType := corev1.EventTypeNormal
+		if err != nil {
+			log.Error(err, message)
+			eventType = corev1.EventTypeWarning
+			message = fmt.Sprintf("%s: %v", message, err)
+		} else {
+			log.Info(message)
+		}
+		r.recorder.Event(
+			issuer,
+			eventType,
+			cfsslissuerapi.EventReasonIssuerReconciler,
+			message,
+		)
+		issuerutil.SetReadyCondition(issuerStatus, conditionStatus, cfsslissuerapi.EventReasonIssuerReconciler, message)
+	}
+
 	// Always attempt to update the Ready condition
 	defer func() {
 		if err != nil {
-			issuerutil.SetReadyCondition(issuerStatus, cfsslissuerapi.ConditionFalse, issuerReadyConditionReason, err.Error())
+			report(cfsslissuerapi.ConditionFalse, "Temporary error. Retrying", err)
 		}
 		if updateErr := r.Status().Update(ctx, issuer); updateErr != nil {
 			err = utilerrors.NewAggregate([]error{err, updateErr})
@@ -103,7 +125,7 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}()
 
 	if ready := issuerutil.GetReadyCondition(issuerStatus); ready == nil {
-		issuerutil.SetReadyCondition(issuerStatus, cfsslissuerapi.ConditionUnknown, issuerReadyConditionReason, "First seen")
+		report(cfsslissuerapi.ConditionUnknown, "First seen", nil)
 		return ctrl.Result{}, nil
 	}
 
@@ -138,7 +160,7 @@ func (r *IssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return ctrl.Result{}, fmt.Errorf("%w: %v", errHealthCheckerCheck, err)
 	}
 
-	issuerutil.SetReadyCondition(issuerStatus, cfsslissuerapi.ConditionTrue, issuerReadyConditionReason, "Success")
+	report(cfsslissuerapi.ConditionTrue, "Success", nil)
 	return ctrl.Result{RequeueAfter: defaultHealthCheckInterval}, nil
 }
 
@@ -147,6 +169,7 @@ func (r *IssuerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
+	r.recorder = mgr.GetEventRecorderFor(cfsslissuerapi.EventSource)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(issuerType).
 		Complete(r)

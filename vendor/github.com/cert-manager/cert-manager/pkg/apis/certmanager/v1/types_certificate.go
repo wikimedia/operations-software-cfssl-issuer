@@ -91,6 +91,12 @@ type CertificateSpec struct {
 	// +optional
 	Subject *X509Subject `json:"subject,omitempty"`
 
+	// LiteralSubject is an LDAP formatted string that represents the [X.509 Subject field](https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.6).
+	// Use this *instead* of the Subject field if you need to ensure the correct ordering of the RDN sequence, such as when issuing certs for LDAP authentication. See https://github.com/cert-manager/cert-manager/issues/3203, https://github.com/cert-manager/cert-manager/issues/4424.
+	// This field is alpha level and is only supported by cert-manager installations where LiteralCertificateSubject feature gate is enabled on both cert-manager controller and webhook.
+	// +optional
+	LiteralSubject string `json:"literalSubject,omitempty"`
+
 	// CommonName is a common name to be used on the Certificate.
 	// The CommonName should have a length of 64 characters or fewer to avoid
 	// generating invalid CSRs.
@@ -350,10 +356,11 @@ type JKSKeystore struct {
 	// If true, a file named `keystore.jks` will be created in the target
 	// Secret resource, encrypted using the password stored in
 	// `passwordSecretRef`.
-	// The keystore file will only be updated upon re-issuance.
-	// A file named `truststore.jks` will also be created in the target
-	// Secret resource, encrypted using the password stored in
-	// `passwordSecretRef` containing the issuing Certificate Authority
+	// The keystore file will be updated immediately.
+	// If the issuer provided a CA certificate, a file named `truststore.jks`
+	// will also be created in the target Secret resource, encrypted using the
+	// password stored in `passwordSecretRef`
+	// containing the issuing Certificate Authority
 	Create bool `json:"create"`
 
 	// PasswordSecretRef is a reference to a key in a Secret resource
@@ -368,10 +375,11 @@ type PKCS12Keystore struct {
 	// If true, a file named `keystore.p12` will be created in the target
 	// Secret resource, encrypted using the password stored in
 	// `passwordSecretRef`.
-	// The keystore file will only be updated upon re-issuance.
-	// A file named `truststore.p12` will also be created in the target
-	// Secret resource, encrypted using the password stored in
-	// `passwordSecretRef` containing the issuing Certificate Authority
+	// The keystore file will be updated immediately.
+	// If the issuer provided a CA certificate, a file named `truststore.p12` will
+	// also be created in the target Secret resource, encrypted using the
+	// password stored in `passwordSecretRef` containing the issuing Certificate
+	// Authority
 	Create bool `json:"create"`
 
 	// PasswordSecretRef is a reference to a key in a Secret resource
@@ -388,11 +396,11 @@ type CertificateStatus struct {
 	// +optional
 	Conditions []CertificateCondition `json:"conditions,omitempty"`
 
-	// LastFailureTime is the time as recorded by the Certificate controller
-	// of the most recent failure to complete a CertificateRequest for this
-	// Certificate resource.
-	// If set, cert-manager will not re-request another Certificate until
-	// 1 hour has elapsed from this time.
+	// LastFailureTime is set only if the lastest issuance for this
+	// Certificate failed and contains the time of the failure. If an
+	// issuance has failed, the delay till the next issuance will be
+	// calculated using formula time.Hour * 2 ^ (failedIssuanceAttempts -
+	// 1). If the latest issuance has succeeded this field will be unset.
 	// +optional
 	LastFailureTime *metav1.Time `json:"lastFailureTime,omitempty"`
 

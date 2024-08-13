@@ -1,5 +1,7 @@
 # Build the manager binary
-FROM golang:1.17 as builder
+FROM golang:1.20 AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
 ENV CGO_ENABLED=0 \
     GOOS=linux \
@@ -26,5 +28,6 @@ RUN go build \
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/manager .
+USER 65532:65532
 
 ENTRYPOINT ["/manager"]

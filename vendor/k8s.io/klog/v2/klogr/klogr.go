@@ -6,10 +6,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-logr/logr"
-	"k8s.io/klog/v2"
 	"sort"
 	"strings"
+
+	"github.com/go-logr/logr"
+
+	"k8s.io/klog/v2"
+	"k8s.io/klog/v2/internal/serialize"
+)
+
+const (
+	// nameKey is used to log the `WithName` values as an additional attribute.
+	nameKey = "logger"
 )
 
 // Option is a functional option that reconfigures the logger created with New.
@@ -20,7 +28,7 @@ type Format string
 
 const (
 	// FormatSerialize tells klogr to turn key/value pairs into text itself
-	// before invoking klog.
+	// before invoking klog. Key/value pairs are sorted by key.
 	FormatSerialize Format = "Serialize"
 
 	// FormatKlog tells klogr to pass all text messages and key/value pairs
@@ -38,6 +46,8 @@ func WithFormat(format Format) Option {
 
 // New returns a logr.Logger which serializes output itself
 // and writes it via klog.
+//
+// Deprecated: this uses a custom, out-dated output format. Use textlogger.NewLogger instead.
 func New() logr.Logger {
 	return NewWithOptions(WithFormat(FormatSerialize))
 }
@@ -45,10 +55,11 @@ func New() logr.Logger {
 // NewWithOptions returns a logr.Logger which serializes as determined
 // by the WithFormat option and writes via klog. The default is
 // FormatKlog.
+//
+// Deprecated: FormatSerialize is out-dated. For FormatKlog, use textlogger.NewLogger instead.
 func NewWithOptions(options ...Option) logr.Logger {
 	l := klogger{
 		level:  0,
-		prefix: "",
 		values: nil,
 		format: FormatKlog,
 	}
@@ -61,58 +72,18 @@ func NewWithOptions(options ...Option) logr.Logger {
 type klogger struct {
 	level     int
 	callDepth int
-	prefix    string
-	values    []interface{}
-	format    Format
+
+	// hasPrefix is true if the first entry in values is the special
+	// nameKey key/value. Such an entry gets added and later updated in
+	// WithName.
+	hasPrefix bool
+
+	values []interface{}
+	format Format
 }
 
 func (l *klogger) Init(info logr.RuntimeInfo) {
 	l.callDepth += info.CallDepth
-}
-
-// trimDuplicates will deduplicate elements provided in multiple KV tuple
-// slices, whilst maintaining the distinction between where the items are
-// contained.
-func trimDuplicates(kvLists ...[]interface{}) [][]interface{} {
-	// maintain a map of all seen keys
-	seenKeys := map[interface{}]struct{}{}
-	// build the same number of output slices as inputs
-	outs := make([][]interface{}, len(kvLists))
-	// iterate over the input slices backwards, as 'later' kv specifications
-	// of the same key will take precedence over earlier ones
-	for i := len(kvLists) - 1; i >= 0; i-- {
-		// initialise this output slice
-		outs[i] = []interface{}{}
-		// obtain a reference to the kvList we are processing
-		kvList := kvLists[i]
-
-		// start iterating at len(kvList) - 2 (i.e. the 2nd last item) for
-		// slices that have an even number of elements.
-		// We add (len(kvList) % 2) here to handle the case where there is an
-		// odd number of elements in a kvList.
-		// If there is an odd number, then the last element in the slice will
-		// have the value 'null'.
-		for i2 := len(kvList) - 2 + (len(kvList) % 2); i2 >= 0; i2 -= 2 {
-			k := kvList[i2]
-			// if we have already seen this key, do not include it again
-			if _, ok := seenKeys[k]; ok {
-				continue
-			}
-			// make a note that we've observed a new key
-			seenKeys[k] = struct{}{}
-			// attempt to obtain the value of the key
-			var v interface{}
-			// i2+1 should only ever be out of bounds if we handling the first
-			// iteration over a slice with an odd number of elements
-			if i2+1 < len(kvList) {
-				v = kvList[i2+1]
-			}
-			// add this KV tuple to the *start* of the output list to maintain
-			// the original order as we are iterating over the slice backwards
-			outs[i] = append([]interface{}{k, v}, outs[i]...)
-		}
-	}
-	return outs
 }
 
 func flatten(kvList ...interface{}) string {
@@ -127,7 +98,11 @@ func flatten(kvList ...interface{}) string {
 		if i+1 < len(kvList) {
 			v = kvList[i+1]
 		}
-		keys = append(keys, k)
+		// Only print each key once...
+		if _, seen := vals[k]; !seen {
+			keys = append(keys, k)
+		}
+		// ... with the latest value.
 		vals[k] = v
 	}
 	sort.Strings(keys)
@@ -153,68 +128,74 @@ func pretty(value interface{}) string {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
-	encoder.Encode(value)
-	return strings.TrimSpace(string(buffer.Bytes()))
+	if err := encoder.Encode(value); err != nil {
+		return fmt.Sprintf("<<error: %v>>", err)
+	}
+	return strings.TrimSpace(buffer.String())
 }
 
-func (l klogger) Info(level int, msg string, kvList ...interface{}) {
+func (l *klogger) Info(level int, msg string, kvList ...interface{}) {
 	switch l.format {
 	case FormatSerialize:
 		msgStr := flatten("msg", msg)
-		trimmed := trimDuplicates(l.values, kvList)
-		fixedStr := flatten(trimmed[0]...)
-		userStr := flatten(trimmed[1]...)
-		klog.InfoDepth(l.callDepth+1, l.prefix, " ", msgStr, " ", fixedStr, " ", userStr)
+		merged := serialize.MergeKVs(l.values, kvList)
+		kvStr := flatten(merged...)
+		klog.VDepth(l.callDepth+1, klog.Level(level)).InfoDepth(l.callDepth+1, msgStr, " ", kvStr)
 	case FormatKlog:
-		trimmed := trimDuplicates(l.values, kvList)
-		if l.prefix != "" {
-			msg = l.prefix + ": " + msg
-		}
-		klog.InfoSDepth(l.callDepth+1, msg, append(trimmed[0], trimmed[1]...)...)
+		merged := serialize.MergeKVs(l.values, kvList)
+		klog.VDepth(l.callDepth+1, klog.Level(level)).InfoSDepth(l.callDepth+1, msg, merged...)
 	}
 }
 
-func (l klogger) Enabled(level int) bool {
-	return klog.V(klog.Level(level)).Enabled()
+func (l *klogger) Enabled(level int) bool {
+	return klog.VDepth(l.callDepth+1, klog.Level(level)).Enabled()
 }
 
-func (l klogger) Error(err error, msg string, kvList ...interface{}) {
+func (l *klogger) Error(err error, msg string, kvList ...interface{}) {
 	msgStr := flatten("msg", msg)
 	var loggableErr interface{}
 	if err != nil {
-		loggableErr = err.Error()
+		loggableErr = serialize.ErrorToString(err)
 	}
 	switch l.format {
 	case FormatSerialize:
 		errStr := flatten("error", loggableErr)
-		trimmed := trimDuplicates(l.values, kvList)
-		fixedStr := flatten(trimmed[0]...)
-		userStr := flatten(trimmed[1]...)
-		klog.ErrorDepth(l.callDepth+1, l.prefix, " ", msgStr, " ", errStr, " ", fixedStr, " ", userStr)
+		merged := serialize.MergeKVs(l.values, kvList)
+		kvStr := flatten(merged...)
+		klog.ErrorDepth(l.callDepth+1, msgStr, " ", errStr, " ", kvStr)
 	case FormatKlog:
-		trimmed := trimDuplicates(l.values, kvList)
-		if l.prefix != "" {
-			msg = l.prefix + ": " + msg
-		}
-		klog.ErrorSDepth(l.callDepth+1, err, msg, append(trimmed[0], trimmed[1]...)...)
+		merged := serialize.MergeKVs(l.values, kvList)
+		klog.ErrorSDepth(l.callDepth+1, err, msg, merged...)
 	}
 }
 
 // WithName returns a new logr.Logger with the specified name appended.  klogr
-// uses '/' characters to separate name elements.  Callers should not pass '/'
+// uses '.' characters to separate name elements.  Callers should not pass '.'
 // in the provided name string, but this library does not actually enforce that.
 func (l klogger) WithName(name string) logr.LogSink {
-	if len(l.prefix) > 0 {
-		l.prefix = l.prefix + "/"
+	if l.hasPrefix {
+		// Copy slice and modify value. No length checks and type
+		// assertions are needed because hasPrefix is only true if the
+		// first two elements exist and are key/value strings.
+		v := make([]interface{}, 0, len(l.values))
+		v = append(v, l.values...)
+		prefix, _ := v[1].(string)
+		prefix = prefix + "." + name
+		v[1] = prefix
+		l.values = v
+	} else {
+		// Preprend new key/value pair.
+		v := make([]interface{}, 0, 2+len(l.values))
+		v = append(v, nameKey, name)
+		v = append(v, l.values...)
+		l.values = v
+		l.hasPrefix = true
 	}
-	l.prefix += name
 	return &l
 }
 
 func (l klogger) WithValues(kvList ...interface{}) logr.LogSink {
-	// Three slice args forces a copy.
-	n := len(l.values)
-	l.values = append(l.values[:n:n], kvList...)
+	l.values = serialize.WithValues(l.values, kvList)
 	return &l
 }
 
