@@ -1,21 +1,33 @@
 #!/bin/bash
-
+# This script sets up a Certificate Authority (CA) and two intermediate CAs to be used with cfssl multirootca.
 set -ex
 
-mkdir -p /cfssl/{ca,intermediate,certs}
+WORKDIR=/cfssl
+CONFDIR="${WORKDIR}/config"
+# The runtime directory can be mounted to write certificates to a persistent location.
+RUNTIMEDIR="${WORKDIR}/runtime"
 
-# Create root CA
-cd /cfssl/ca
-cfssl genkey -initca /cfssl/ca-csr.json | cfssljson -bare ca
+mkdir -p "${RUNTIMEDIR}"/{ca,intermediate,certs}
+
+# Create the root CA
+cd "${RUNTIMEDIR}/ca"
+cfssl genkey -initca "${CONFDIR}/ca-csr.json" | cfssljson -bare ca
 
 # Create & sign two intermediates
-cd /cfssl/intermediate
-cfssl genkey -initca /cfssl/intermediate1-csr.json | cfssljson -bare intermediate1
-cfssl sign -ca /cfssl/ca/ca.pem -ca-key /cfssl/ca/ca-key.pem -config /cfssl/ca-config.json -profile intermediate_ca intermediate1.csr | cfssljson -bare intermediate1
-cfssl genkey -initca /cfssl/intermediate2-csr.json | cfssljson -bare intermediate2
-cfssl sign -ca /cfssl/ca/ca.pem -ca-key /cfssl/ca/ca-key.pem -config /cfssl/ca-config.json -profile intermediate_ca intermediate2.csr | cfssljson -bare intermediate2
+cd "${RUNTIMEDIR}/intermediate"
+for i in 1 2; do
+    cfssl genkey -initca "${CONFDIR}/intermediate${i}-csr.json" | cfssljson -bare "intermediate${i}"
+    cfssl sign -ca "${RUNTIMEDIR}/ca/ca.pem" \
+            -ca-key "${RUNTIMEDIR}/ca/ca-key.pem" \
+            -config "${CONFDIR}/ca-config.json" \
+            -profile intermediate_ca "intermediate${i}.csr" | cfssljson -bare "intermediate${i}"
+done
 
-# Create and sign a cert for host
-cd /cfssl/certs
-cfssl gencert -ca /cfssl/intermediate/intermediate1.pem -ca-key /cfssl/intermediate/intermediate1-key.pem -config /cfssl/ca-config.json -profile=server /cfssl/host.json | cfssljson -bare host
-cat host.pem /cfssl/intermediate/intermediate1.pem /cfssl/ca/ca.pem > host-bundle.pem
+# Create and sign (with intermediate 1) a cert for this "host" to be used by multirootca
+cd "${RUNTIMEDIR}/certs"
+cfssl gencert -ca "${RUNTIMEDIR}/intermediate/intermediate1.pem" \
+              -ca-key "${RUNTIMEDIR}/intermediate/intermediate1-key.pem" \
+              -config "${CONFDIR}/ca-config.json" \
+              -profile=server "${CONFDIR}/host.json" | cfssljson -bare host
+# Create a bundle with the host cert and the CA chain
+cat host.pem "${RUNTIMEDIR}/intermediate/intermediate1.pem" "${RUNTIMEDIR}/ca/ca.pem" > host-bundle.pem
